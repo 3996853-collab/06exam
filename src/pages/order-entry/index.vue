@@ -15,6 +15,7 @@
       <SenderForm ref="senderRef" />
       <ReceiverForm ref="receiverRef" />
       <CargoForm ref="cargoRef" />
+      <FeeForm ref="feeRef" />
     </div>
 
     <!-- 底部操作栏 -->
@@ -31,11 +32,13 @@ import { ref } from 'vue'
 import SenderForm from './components/SenderForm.vue'
 import ReceiverForm from './components/ReceiverForm.vue'
 import CargoForm from './components/CargoForm.vue'
+import FeeForm from './components/FeeForm.vue'
 
 const formData = ref({})
 const senderRef = ref(null)
 const receiverRef = ref(null)
 const cargoRef = ref(null)
+const feeRef = ref(null)
 
 const saveDraft = () => {
   console.log('保存草稿', formData.value)
@@ -53,6 +56,7 @@ const reset = () => {
   senderRef.value?.formRef?.resetFields()
   receiverRef.value?.formRef?.resetFields()
   cargoRef.value?.formRef?.resetFields()
+  feeRef.value?.formRef?.resetFields()
 }
 
 const printOrder = () => {
