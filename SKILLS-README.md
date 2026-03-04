@@ -1,6 +1,6 @@
 # Trae 技能安装指南
 
-本项目包含了完整的 Superpowers 技能集，用于增强 Trae 的编码能力。
+本项目包含了完整的技能集合，用于增强 Trae 的编码能力。
 
 ## 快速安装
 
@@ -19,13 +19,17 @@
 git clone https://github.com/obra/superpowers.git
 
 # 2. 复制技能到项目目录
+mkdir -p .trae/skills
 cp -r superpowers/skills/* .trae/skills/
+cp -r skills/* .trae/skills/
 
 # 或者使用安装脚本
 ./install-skills.sh
 ```
 
 ## 已包含的技能
+
+### Superpowers 技能集
 
 - **brainstorming** - 头脑风暴，需求分析
 - **writing-plans** - 编写实现计划
@@ -41,6 +45,21 @@ cp -r superpowers/skills/* .trae/skills/
 - **dispatching-parallel-agents** - 并行代理分发
 - **finishing-a-development-branch** - 完成开发分支
 - **using-superpowers** - 使用 Superpowers
+
+### 项目自带技能
+
+- **ai-studio-project-converter** - AI Studio 项目转换
+- **axure-prototype-workflow** - Axure 原型工作流
+- **local-axure-workflow** - 本地 Axure 工作流
+- **mcp-installer** - MCP 安装器
+- **screenshot-page-workflow** - 截图页面工作流
+- **v0-project-converter** - v0 项目转换
+- **web-page-workflow** - Web 页面工作流
+
+### 自定义技能
+
+- **firecrawl-mcp-installer** - Firecrawl MCP 安装
+- **superpowers** - Superpowers 安装
 
 ## 使用方式
 
