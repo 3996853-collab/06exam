@@ -85,9 +85,37 @@ ai-studio-project/
 <link href="https://fonts.googleapis.com/...">  <!-- 可能包含外部字体 -->
 ```
 
-###本项目组件规范
+### 本项目组件规范（Vue 项目）
 
 所有页面组件必须遵循以下格式：
+
+```vue
+/**
+ * @name 页面名称
+ * 
+ * 参考资料：
+ * - /rules/development-standards.md
+ * - /assets/libraries/tailwind-css.md
+ */
+<template>
+  <div class="page-container">
+    <!-- 页面内容 -->
+  </div>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue';
+import './style.css';
+
+// 组件逻辑
+</script>
+
+<style scoped>
+/* 组件样式 */
+</style>
+```
+
+### 本项目组件规范（React 项目，仅供参考）
 
 ```typescript
 /**
@@ -125,7 +153,7 @@ const Component = forwardRef<AxureHandle, AxureProps>(function PageName(innerPro
 export default Component;
 ```
 
-### 转换主应用组件
+### 转换主应用组件（Vue 项目）
 
 **AI Studio 原始代码**：
 ```typescript
@@ -139,7 +167,53 @@ export default function App() {
 }
 ```
 
-**转换为本项目规范**：
+**转换为本项目 Vue 规范**：
+```vue
+/**
+ * @name 页面名称
+ * 
+ * 参考资料：
+ * - /rules/development-standards.md
+ * - /assets/libraries/tailwind-css.md
+ */
+<template>
+  <div>
+    <Header />
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import './style.css';
+import Header from './components/Header';
+
+const count = ref(0);
+</script>
+```
+
+**关键转换点**：
+1. 添加文件头部注释（`@name` 和参考资料）
+2. 使用 `<template>` 包裹页面内容
+3. 使用 `<script setup>` 语法和 Vue 3 Composition API
+4. React `useState` → Vue `ref`
+5. JSX → Vue Template 语法
+6. 保持原有的 Tailwind 类名不变
+
+### 转换主应用组件（React 项目，仅供参考）
+
+**AI Studio 原始代码**：
+```typescript
+// App.tsx
+import { useState } from 'react';
+import Header from './components/Header';
+
+export default function App() {
+  const [count, setCount] = useState(0);
+  return <div><Header /></div>;
+}
+```
+
+**转换为本项目 React 规范**：
 ```typescript
 /**
  * @name 页面名称
@@ -178,7 +252,7 @@ export default Component;
 **关键转换点**：
 1. 添加文件头部注释（`@name` 和参考资料）
 2. 使用 `forwardRef<AxureHandle, AxureProps>` 包装
-3. 实现 `useImperativeHandle` 暴露本项目API
+3. 实现 `useImperativeHandle` 暴露本项目 API
 4. 使用 `export default Component`
 5. 保持原有的 JSX、Hooks 和 Tailwind 类名不变
 

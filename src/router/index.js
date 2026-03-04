@@ -14,6 +14,12 @@ const router = createRouter({
       name: 'orderEntry',
       component: () => import('../pages/order-entry/index.vue'),
       meta: { title: '录单' }
+    },
+    {
+      path: '/executing-plans',
+      name: 'executingPlans',
+      component: () => import('../pages/executing-plans/index.vue'),
+      meta: { title: '执行计划' }
     }
   ]
 })

@@ -44,9 +44,37 @@ node scripts/v0-converter.mjs "temp/my-v0-project" my-page
 
 ## 转换要点
 
-###本项目组件规范
+### 本项目组件规范（Vue 项目）
 
 所有页面组件必须遵循以下格式：
+
+```vue
+/**
+ * @name 页面名称
+ * 
+ * 参考资料：
+ * - /rules/development-standards.md
+ * - /assets/libraries/tailwind-css.md
+ */
+<template>
+  <div class="page-container">
+    <!-- 页面内容 -->
+  </div>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue';
+import './style.css';
+
+// 组件逻辑
+</script>
+
+<style scoped>
+/* 组件样式 */
+</style>
+```
+
+### 本项目组件规范（React 项目，仅供参考）
 
 ```typescript
 /**

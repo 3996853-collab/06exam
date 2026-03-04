@@ -123,12 +123,57 @@ description: 处理本地导出的 Axure 原型资源并生成主题、数据模
      - 识别交互（点击、悬停、状态切换等）
 
    **输出文件**：
-   - `src/pages/<page-name>/index.tsx`
+   - `src/pages/<page-name>/index.vue`（Vue 项目）或 `src/pages/<page-name>/index.tsx`（React 项目）
    - `src/pages/<page-name>/style.css`（必须包含 `@import "tailwindcss";`）
    - `src/pages/<page-name>/components/`（根据需要）
 
-   **核心代码规范**（必须遵守）：
-   - 变量名必须是 `Component`，使用 `export default Component`
+   **Vue 项目代码规范**（必须遵守）：
+   ```vue
+   <!-- index.vue 结构 -->
+   /**
+    * @name 页面显示名称
+    */
+   <template>
+     <div class="page-container">
+       <!-- 页面内容 -->
+     </div>
+   </template>
+
+   <script setup>
+   import { ref, computed } from 'vue';
+   import './style.css';
+
+   // 组件逻辑
+   </script>
+
+   <style scoped>
+   /* 组件样式 */
+   </style>
+   ```
+
+   **React 项目代码规范**（必须遵守）：
+   ```tsx
+   // index.tsx 结构
+   /**
+    * @name 页面显示名称
+    */
+   import './style.css';
+   import React from 'react';
+
+   const Component = function PageName() {
+     return <div>...</div>;
+   };
+
+   export default Component;
+   ```
+
+   ```css
+   /* style.css 必须以此开头 */
+   @import "tailwindcss";
+   ```
+
+   - Vue 项目使用 `<script setup>` 语法
+   - React 项目变量名必须是 `Component`，使用 `export default Component`
    - 详细规范见 `rules/development-standards.md`
 
 5. **验收页面还原**
