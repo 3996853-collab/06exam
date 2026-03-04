@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import OrderEntry from '../pages/order-entry/index.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -7,12 +6,14 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: () => import('../App.vue')
+      component: () => import('../AppNew.vue'),
+      meta: { title: '首页' }
     },
     {
       path: '/order-entry',
       name: 'orderEntry',
-      component: OrderEntry
+      component: () => import('../pages/order-entry/index.vue'),
+      meta: { title: '录单' }
     }
   ]
 })
