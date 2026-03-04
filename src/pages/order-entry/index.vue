@@ -6,7 +6,7 @@
       <div class="header-actions">
         <el-button @click="handleSaveDraft">保存草稿</el-button>
         <el-button @click="handleLoadDraft">加载草稿</el-button>
-        <el-button type="primary" @click="submitOrder">提交运单</el-button>
+        <el-button type="primary" @click="handleSubmitOrder">提交运单</el-button>
       </div>
     </div>
 
@@ -20,10 +20,13 @@
 
     <!-- 底部操作栏 -->
     <div class="footer-actions">
-      <el-button @click="reset">重置</el-button>
-      <el-button @click="printOrder">打印</el-button>
-      <el-button type="primary" @click="submitOrder">提交</el-button>
+      <el-button @click="handleReset">重置</el-button>
+      <el-button @click="handlePrintOrder">打印</el-button>
+      <el-button type="primary" @click="handleSubmitOrder">提交</el-button>
     </div>
+
+    <!-- 打印组件 -->
+    <OrderPrint ref="printRef" :order-data="formData" :order-no="orderNo" />
 
     <!-- 草稿列表对话框 -->
     <el-dialog v-model="draftDialogVisible" title="选择草稿" width="800px">
@@ -55,6 +58,7 @@ import SenderForm from './components/SenderForm.vue'
 import ReceiverForm from './components/ReceiverForm.vue'
 import CargoForm from './components/CargoForm.vue'
 import FeeForm from './components/FeeForm.vue'
+import OrderPrint from './components/OrderPrint.vue'
 import { saveDraft, loadDrafts, getDraft, deleteDraft } from './utils/draftManager'
 
 const formData = ref({})
@@ -62,8 +66,10 @@ const senderRef = ref(null)
 const receiverRef = ref(null)
 const cargoRef = ref(null)
 const feeRef = ref(null)
+const printRef = ref(null)
 const draftDialogVisible = ref(false)
 const drafts = ref([])
+const orderNo = ref('')
 
 // 收集表单数据
 const collectFormData = () => {
@@ -81,6 +87,14 @@ const loadFormData = (data) => {
   if (data.receiver) Object.assign(receiverRef.value?.form, data.receiver)
   if (data.cargo) Object.assign(cargoRef.value?.form, data.cargo)
   if (data.fee) Object.assign(feeRef.value?.form, data.fee)
+}
+
+// 生成运单号
+const generateOrderNo = () => {
+  const now = new Date()
+  const dateStr = now.toISOString().replace(/[-:T.]/g, '').slice(0, 14)
+  const random = Math.random().toString(36).slice(2, 6).toUpperCase()
+  return `ZTO${dateStr}${random}`
 }
 
 const handleSaveDraft = () => {
@@ -113,19 +127,27 @@ const handleDeleteDraft = (id) => {
   }).catch(() => {})
 }
 
-const submitOrder = () => {
-  console.log('提交运单', formData.value)
+const handleSubmitOrder = () => {
+  orderNo.value = generateOrderNo()
+  formData.value = collectFormData()
+  ElMessage.success(`运单已提交，运单号：${orderNo.value}`)
+  console.log('提交运单:', orderNo.value, formData.value)
 }
 
-const reset = () => {
+const handleReset = () => {
   senderRef.value?.formRef?.resetFields()
   receiverRef.value?.formRef?.resetFields()
   cargoRef.value?.formRef?.resetFields()
   feeRef.value?.formRef?.resetFields()
+  orderNo.value = ''
 }
 
-const printOrder = () => {
-  console.log('打印运单')
+const handlePrintOrder = () => {
+  formData.value = collectFormData()
+  if (!orderNo.value) {
+    orderNo.value = generateOrderNo()
+  }
+  printRef.value?.print()
 }
 </script>
 
