@@ -13,7 +13,13 @@
       <el-row :gutter="16">
         <el-col :span="12">
           <el-form-item label="收件人" prop="name">
-            <el-input v-model="form.name" placeholder="请输入姓名" />
+            <el-autocomplete
+              v-model="form.name"
+              :fetch-suggestions="queryReceiverHistory"
+              placeholder="请输入姓名或选择历史记录"
+              @select="handleReceiverSelect"
+              style="width: 100%"
+            />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -83,6 +89,37 @@ const rules = {
   province: [{ required: true, message: '请选择省份', trigger: 'change' }],
   city: [{ required: true, message: '请选择城市', trigger: 'change' }],
   address: [{ required: true, message: '请输入详细地址', trigger: 'blur' }]
+}
+
+// 历史记录数据
+const receiverHistory = ref([
+  { value: '赵六', phone: '13612341234', province: '北京市', city: '北京市', address: '北京市海淀区 xxx 路' },
+  { value: '钱七', phone: '13512341234', province: '上海市', city: '上海市', address: '上海市黄浦区 xxx 街' },
+  { value: '孙八', phone: '13412341234', province: '广东省', city: '广州市', address: '广州市天河区 xxx 大厦' }
+])
+
+const queryReceiverHistory = (queryString, cb) => {
+  const results = queryString
+    ? receiverHistory.value.filter(createFilter(queryString))
+    : receiverHistory.value
+  cb(results)
+}
+
+const createFilter = (queryString) => {
+  return (item) => {
+    return item.value.toLowerCase().includes(queryString.toLowerCase())
+  }
+}
+
+const handleReceiverSelect = (item) => {
+  // 自动填充其他字段
+  const selectedData = receiverHistory.value.find(h => h.value === item.value)
+  if (selectedData) {
+    form.phone = selectedData.phone
+    form.province = selectedData.province
+    form.city = selectedData.city
+    form.address = selectedData.address
+  }
 }
 
 const startVoiceInput = () => {
