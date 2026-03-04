@@ -3,10 +3,12 @@
     <div class="section-title">
       <el-icon><User /></el-icon>
       <span>寄件人信息</span>
-      <el-button type="primary" size="small" @click="startVoiceInput" class="voice-btn">
-        <el-icon><Microphone /></el-icon>
-        语音输入
-      </el-button>
+      <el-tooltip content="说出寄件人姓名，电话号码，地址即可自动填充" placement="top">
+        <el-button type="primary" size="small" @click="startVoiceInput" class="voice-btn">
+          <el-icon><Microphone /></el-icon>
+          语音输入
+        </el-button>
+      </el-tooltip>
     </div>
 
     <el-form :model="form" :rules="rules" ref="formRef" label-width="80px">
