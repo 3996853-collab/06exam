@@ -1,10 +1,10 @@
 # Trae 技能安装指南
 
-本项目包含了完整的技能集合，用于增强 Trae 的编码能力。
+本项目包含了完整的技能集合（23 个），用于增强 Trae 的编码能力。
 
 ## 快速安装
 
-### 方法一：自动安装脚本（推荐）
+### 自动安装脚本（推荐）
 
 在项目根目录执行：
 
@@ -12,20 +12,12 @@
 ./install-skills.sh
 ```
 
-### 方法二：手动安装
+**脚本会做什么：**
+- ✅ 检查 `.trae/skills/` 目录
+- ✅ 列出所有已安装的技能
+- ✅ 提示重启 Trae
 
-```bash
-# 1. 确保 superpowers 源码存在
-git clone https://github.com/obra/superpowers.git
-
-# 2. 复制技能到项目目录
-mkdir -p .trae/skills
-cp -r superpowers/skills/* .trae/skills/
-cp -r skills/* .trae/skills/
-
-# 或者使用安装脚本
-./install-skills.sh
-```
+**注意：** 技能已经预装在 `.trae/skills/` 目录中，脚本只是帮助检查和注册。
 
 ## 已包含的技能
 
