@@ -18,29 +18,9 @@
           <el-icon><House /></el-icon>
           <span>首页</span>
         </el-menu-item>
-        <el-sub-menu index="2">
-          <template #title>
-            <el-icon><Setting /></el-icon>
-            <span>运营管理</span>
-          </template>
-          <el-menu-item index="2-1">会员管理</el-menu-item>
-          <el-menu-item index="2-2">订单管理</el-menu-item>
-        </el-sub-menu>
-        <el-menu-item index="3">
-          <el-icon><Document /></el-icon>
-          <span>录单</span>
-        </el-menu-item>
-        <el-menu-item index="4">
-          <el-icon><User /></el-icon>
-          <span>用户管理</span>
-        </el-menu-item>
-        <el-menu-item index="5">
-          <el-icon><Document /></el-icon>
-          <span>数据分析</span>
-        </el-menu-item>
-        <el-menu-item index="6">
-          <el-icon><Message /></el-icon>
-          <span>消息管理</span>
+        <el-menu-item index="2">
+          <el-icon><Setting /></el-icon>
+          <span>经营管理</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
