@@ -12,7 +12,7 @@
 
     <!-- 表单内容 -->
     <div class="form-content">
-      <p style="text-align: center; color: #909399;">表单组件将在这里显示</p>
+      <SenderForm ref="senderRef" />
     </div>
 
     <!-- 底部操作栏 -->
@@ -26,8 +26,10 @@
 
 <script setup>
 import { ref } from 'vue'
+import SenderForm from './components/SenderForm.vue'
 
 const formData = ref({})
+const senderRef = ref(null)
 
 const saveDraft = () => {
   console.log('保存草稿', formData.value)
@@ -42,7 +44,7 @@ const submitOrder = () => {
 }
 
 const reset = () => {
-  console.log('重置表单')
+  senderRef.value?.formRef?.resetFields()
 }
 
 const printOrder = () => {
