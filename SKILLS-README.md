@@ -72,13 +72,3 @@
 2. 接收者克隆项目后，运行 `./install-skills.sh`
 3. 重启 Trae 即可使用所有技能
 
-## 注意事项
-
-- 技能文件较大，建议将 `.trae/skills/` 加入 `.gitignore`，只保留安装脚本
-- 或者将 `superpowers/` 作为 git submodule 引入
-- 首次使用需要重启 Trae 以加载技能
-
-## 技能来源
-
-- Superpowers: https://github.com/obra/superpowers
-- Firecrawl MCP: 自定义安装技能
