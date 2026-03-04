@@ -13,6 +13,7 @@
     <!-- 表单内容 -->
     <div class="form-content">
       <SenderForm ref="senderRef" />
+      <ReceiverForm ref="receiverRef" />
     </div>
 
     <!-- 底部操作栏 -->
@@ -27,9 +28,11 @@
 <script setup>
 import { ref } from 'vue'
 import SenderForm from './components/SenderForm.vue'
+import ReceiverForm from './components/ReceiverForm.vue'
 
 const formData = ref({})
 const senderRef = ref(null)
+const receiverRef = ref(null)
 
 const saveDraft = () => {
   console.log('保存草稿', formData.value)
@@ -45,6 +48,7 @@ const submitOrder = () => {
 
 const reset = () => {
   senderRef.value?.formRef?.resetFields()
+  receiverRef.value?.formRef?.resetFields()
 }
 
 const printOrder = () => {
