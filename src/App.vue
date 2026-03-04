@@ -55,17 +55,22 @@
         </div>
         <div class="nav-right">
           <div class="nav-actions">
-            <span class="action-item">通知</span>
-            <span class="action-item">日历</span>
-            <span class="action-item">帮助</span>
-            <span class="action-item">设置</span>
+            <span class="action-item"><el-icon><Clock /></el-icon> 返回旧版</span>
+            <span class="action-item">快件跟踪</span>
+            <span class="action-item"><el-icon><Document /></el-icon> 待办</span>
+            <span class="action-item">
+              <el-badge value="99+" type="danger">
+                <span><el-icon><Bell /></el-icon> 消息</span>
+              </el-badge>
+            </span>
+            <span class="action-item">导出</span>
+            <span class="action-item">下载</span>
+            <span class="action-item">工单</span>
+            <span class="action-item">反馈</span>
             <el-dropdown>
               <span class="user-info">
-                <el-avatar :size="32">
-                  <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=user%20avatar%20portrait&image_size=square" alt="User" />
-                </el-avatar>
-                <span style="margin-left: 8px;">管理员</span>
-                <el-icon style="margin-left: 4px;"><ArrowDown /></el-icon>
+                <span style="margin-right: 8px;">侯鹏</span>
+                <el-icon><Setting /></el-icon>
               </span>
               <template #dropdown>
                 <el-dropdown-menu>
@@ -282,7 +287,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { House, Setting, User, Document, Message, ArrowDown, Plus } from '@element-plus/icons-vue'
+import { House, Setting, User, Document, Message, ArrowDown, Plus, Clock, Bell } from '@element-plus/icons-vue'
 
 const activeMenu = ref('1')
 const activeTopMenu = ref('1')
@@ -415,6 +420,20 @@ const progress = ref(75)
   color: rgba(255, 255, 255, 0.8);
   height: 60px;
   line-height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-item::after {
+  content: '|';
+  position: absolute;
+  right: 0;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.action-item:last-child::after {
+  content: none;
 }
 
 .action-item:hover {
