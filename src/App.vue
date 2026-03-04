@@ -27,7 +27,7 @@
           <el-menu-item index="2-1">会员管理</el-menu-item>
           <el-menu-item index="2-2">订单管理</el-menu-item>
         </el-sub-menu>
-        <el-menu-item index="3">
+        <el-menu-item index="3" @click="$router.push('/order-entry')">
           <el-icon><Document /></el-icon>
           <span>录单</span>
         </el-menu-item>
@@ -287,10 +287,9 @@
         </div>
       </div>
 
-      <!-- 录单页面 -->
-      <div v-if="activePage === 'orderEntry'" class="content-area">
-        <OrderEntry />
-      </div>
+      <router-view v-slot="{ Component }">
+        <component :is="Component" />
+      </router-view>
     </div>
   </div>
 </template>
@@ -298,22 +297,11 @@
 <script setup>
 import { ref } from 'vue'
 import { House, Setting, User, Document, Message, ArrowDown, Plus, Clock, Bell } from '@element-plus/icons-vue'
-import OrderEntry from './pages/order-entry/index.vue'
 
 const activeMenu = ref('1')
 const activeTopMenu = ref('1')
 const dateRange = ref(['2024-04', '2025-05'])
 const progress = ref(75)
-const activePage = ref('home')
-
-const handleMenuSelect = (index) => {
-  activeMenu.value = index
-  if (index === '3') {
-    activePage.value = 'orderEntry'
-  } else {
-    activePage.value = 'home'
-  }
-}
 </script>
 
 <style scoped>
