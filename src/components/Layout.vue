@@ -225,8 +225,8 @@ const handleTabsCommand = (command) => {
 
 .top-nav {
   height: 50px;
-  background-color: #fff;
-  border-bottom: 1px solid #e6e6e6;
+  background-color: #00b8c4;
+  color: #fff;
   display: flex;
   align-items: center;
   padding: 0 20px;
@@ -243,7 +243,7 @@ const handleTabsCommand = (command) => {
 }
 
 .nav-tab {
-  color: #606266;
+  color: #fff;
   cursor: pointer;
   font-size: 14px;
   padding: 8px 12px;
@@ -252,13 +252,14 @@ const handleTabsCommand = (command) => {
 }
 
 .nav-tab:hover {
-  background-color: #f0f0f0;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .nav-tab.active {
-  color: #002140;
+  color: #fff;
   font-weight: bold;
-  background-color: #e6f7ff;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-bottom: 2px solid #fff;
 }
 
 .nav-right {
@@ -274,7 +275,7 @@ const handleTabsCommand = (command) => {
 }
 
 .action-item {
-  color: #606266;
+  color: #fff;
   cursor: pointer;
   font-size: 14px;
   display: flex;
@@ -283,7 +284,8 @@ const handleTabsCommand = (command) => {
 }
 
 .action-item:hover {
-  color: #002140;
+  color: #fff;
+  opacity: 0.8;
 }
 
 .user-info {
@@ -291,11 +293,12 @@ const handleTabsCommand = (command) => {
   align-items: center;
   gap: 4px;
   cursor: pointer;
-  color: #606266;
+  color: #fff;
 }
 
 .user-info:hover {
-  color: #002140;
+  color: #fff;
+  opacity: 0.8;
 }
 
 .tabs-bar {
