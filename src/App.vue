@@ -13,6 +13,7 @@
         background-color="#002140"
         text-color="#fff"
         active-text-color="#00b8c4"
+        @select="handleMenuSelect"
       >
         <el-menu-item index="1">
           <el-icon><House /></el-icon>
@@ -27,6 +28,10 @@
           <el-menu-item index="2-2">订单管理</el-menu-item>
         </el-sub-menu>
         <el-menu-item index="3">
+          <el-icon><Document /></el-icon>
+          <span>录单</span>
+        </el-menu-item>
+        <el-menu-item index="4">
           <el-icon><User /></el-icon>
           <span>用户管理</span>
         </el-menu-item>
@@ -281,6 +286,11 @@
           </div>
         </div>
       </div>
+
+      <!-- 录单页面 -->
+      <div v-if="activePage === 'orderEntry'" class="content-area">
+        <OrderEntry />
+      </div>
     </div>
   </div>
 </template>
@@ -288,11 +298,22 @@
 <script setup>
 import { ref } from 'vue'
 import { House, Setting, User, Document, Message, ArrowDown, Plus, Clock, Bell } from '@element-plus/icons-vue'
+import OrderEntry from './pages/order-entry/index.vue'
 
 const activeMenu = ref('1')
 const activeTopMenu = ref('1')
 const dateRange = ref(['2024-04', '2025-05'])
 const progress = ref(75)
+const activePage = ref('home')
+
+const handleMenuSelect = (index) => {
+  activeMenu.value = index
+  if (index === '3') {
+    activePage.value = 'orderEntry'
+  } else {
+    activePage.value = 'home'
+  }
+}
 </script>
 
 <style scoped>
