@@ -204,8 +204,12 @@ const handleMenuClick = (route) => {
 }
 
 const handleMegaItemClick = (itemName) => {
-  if (itemName === '批量录单') {
+  if (itemName === '录单') {
+    router.push('/order-entry')
+  } else if (itemName === '批量录单') {
     router.push('/management-center/batch-order-entry')
+  } else if (itemName === '录单antigravity') {
+    router.push('/order-entry/antigravity')
   } else if (itemName === '品控工作台') {
     router.push('/service-quality/quality-control-workbench')
   } else {
@@ -220,7 +224,7 @@ const megaMenuData = [
   [
     {
       title: '业务功能',
-      items: ['批量录单']
+      items: ['录单', '批量录单', '录单antigravity']
     },
     {
       title: '服务质量',

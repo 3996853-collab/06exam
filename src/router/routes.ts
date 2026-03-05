@@ -19,6 +19,24 @@ export const constantRoutes = [
       }
     ]
   },
+  {
+    path: '/order-entry',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        name: 'OrderEntry',
+        component: () => import('@/views/order-entry/index.vue'),
+        meta: { title: '录单', icon: 'EditPen' }
+      },
+      {
+        path: 'antigravity',
+        name: 'OrderEntryAntigravity',
+        component: () => import('@/views/order-entry/antigravity/index.vue'),
+        meta: { title: '录单antigravity', icon: 'EditPen' }
+      }
+    ]
+  },
 
   {
     path: '/operation-transport',
