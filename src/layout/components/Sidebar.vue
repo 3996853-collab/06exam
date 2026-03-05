@@ -204,12 +204,10 @@ const handleMenuClick = (route) => {
 }
 
 const handleMegaItemClick = (itemName) => {
-  if (itemName === '录单') {
-    router.push('/order-entry')
-  } else if (itemName === '批量录单') {
+  if (itemName === '批量录单') {
     router.push('/management-center/batch-order-entry')
-  } else if (itemName === '寄件运单管理') {
-    router.push('/order-management/outbound-waybill')
+  } else if (itemName === '品控工作台') {
+    router.push('/service-quality/quality-control-workbench')
   } else {
     // For other mock items, just show a message or do nothing
     console.log('Clicked mega menu item:', itemName)
@@ -222,11 +220,11 @@ const megaMenuData = [
   [
     {
       title: '业务功能',
-      items: ['录单', '批量录单']
+      items: ['批量录单']
     },
     {
-      title: '订单管理',
-      items: ['寄件运单管理']
+      title: '服务质量',
+      items: ['品控工作台']
     }
   ]
 ]

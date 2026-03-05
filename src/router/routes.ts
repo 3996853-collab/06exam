@@ -19,18 +19,7 @@ export const constantRoutes = [
       }
     ]
   },
-  {
-    path: '/order-entry',
-    component: Layout,
-    children: [
-      {
-        path: '',
-        name: 'OrderEntry',
-        component: () => import('@/views/order-entry/index.vue'),
-        meta: { title: '录单', icon: 'EditPen' }
-      }
-    ]
-  },
+
   {
     path: '/operation-transport',
     component: Layout,
@@ -125,27 +114,16 @@ export const constantRoutes = [
   {
     path: '/service-quality',
     component: Layout,
+    redirect: '/service-quality/quality-control-workbench',
+    meta: { title: '服务质量', icon: 'Headset' },
     children: [
       {
-        path: '',
-        name: 'ServiceQuality',
-        component: () => import('@/views/dashboard/index.vue'),
-        meta: { title: '服务质量', icon: 'Headset' }
+        path: 'quality-control-workbench',
+        name: 'QualityControlWorkbench',
+        component: () => import('@/views/service-quality/quality-control-workbench/index.vue'),
+        meta: { title: '品控工作台', icon: 'Headset' }
       }
     ]
   },
-  {
-    path: '/order-management',
-    component: Layout,
-    redirect: '/order-management/outbound-waybill',
-    meta: { title: '订单管理', icon: 'Document' },
-    children: [
-      {
-        path: 'outbound-waybill',
-        name: 'OutboundWaybill',
-        component: () => import('@/views/order-management/outbound-waybill/index.vue'),
-        meta: { title: '寄件运单管理', icon: 'Document' }
-      }
-    ]
-  }
+
 ]
