@@ -208,6 +208,8 @@ const handleMegaItemClick = (itemName) => {
     router.push('/order-entry')
   } else if (itemName === '批量录单') {
     router.push('/management-center/batch-order-entry')
+  } else if (itemName === '寄件运单管理') {
+    router.push('/order-management/outbound-waybill')
   } else {
     // For other mock items, just show a message or do nothing
     console.log('Clicked mega menu item:', itemName)
@@ -217,52 +219,14 @@ const handleMegaItemClick = (itemName) => {
 
 // Hardcoded Mega Menu Data to match the screenshot
 const megaMenuData = [
-  // Column 1
   [
-    {
-      title: '基础资料',
-      items: ['距离时效', '运输公司', '车队维护', '违章行为代码', '线路班次', '车队分拨里程', '车队观测信息', '服务站管理', '线路通卡维护', '服务商管理']
-    },
-    {
-      title: '车辆管理',
-      items: ['车辆维保']
-    },
-    {
-      title: '车型管理',
-      items: ['车辆信息', '车辆交接', '出险信息', '行车统计', '时间油耗']
-    }
-  ],
-  // Column 2
-  [
-    {
-      title: '司机管理',
-      items: ['司机信息', '考勤监控', 'T页信息', '连续补贴', '奖点信息', '违法信息', '事务管理', 'IC卡记录']
-    },
     {
       title: '业务功能',
       items: ['录单', '批量录单']
     },
     {
-      title: '运输计划',
-      items: ['调度计划', '整车订单', '无班线调度单', '运输费用审批', '讲站明细查询', '出站明细查询']
-    }
-  ],
-  // Column 3
-  [
-    {
-      title: '运输监控',
-      items: ['运输质量报告', '运输任务管理', '车辆装载率', '班车超时监控', '无任务审批', '晚点延误申诉', '车辆预警监控', '预警事件配置', '车辆预警事件', '车辆停车记录', '异常上报审批', '物损操作报表']
-    },
-    {
-      title: '成本管理',
-      items: ['注费成本', '过路费成本', '尿素成本', '固定成本', '成本分析', '成本分摊', '司机日常加注', '垫付费用明细', '推迟记录', '运输成本汇总']
-    }
-  ],
-  // Column 4
-  [
-    {
-      title: '网点打卡',
-      items: ['个人任务']
+      title: '订单管理',
+      items: ['寄件运单管理']
     }
   ]
 ]

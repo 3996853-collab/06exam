@@ -133,5 +133,19 @@ export const constantRoutes = [
         meta: { title: '服务质量', icon: 'Headset' }
       }
     ]
+  },
+  {
+    path: '/order-management',
+    component: Layout,
+    redirect: '/order-management/outbound-waybill',
+    meta: { title: '订单管理', icon: 'Document' },
+    children: [
+      {
+        path: 'outbound-waybill',
+        name: 'OutboundWaybill',
+        component: () => import('@/views/order-management/outbound-waybill/index.vue'),
+        meta: { title: '寄件运单管理', icon: 'Document' }
+      }
+    ]
   }
 ]
