@@ -1,11 +1,43 @@
 <template>
   <div :class="{ 'sidebar-container': true, 'hideSidebar': !sidebar.opened }">
     <div class="sidebar-header">
-      <div class="org-switcher">
-        <el-icon><CopyDocument /></el-icon>
-        <span>总部</span>
-        <el-icon class="arrow"><ArrowDown /></el-icon>
-      </div>
+      <el-popover
+        placement="bottom-start"
+        :width="190"
+        trigger="click"
+        popper-class="org-selector-popover"
+      >
+        <template #reference>
+          <div class="org-switcher">
+            <el-icon><CopyDocument /></el-icon>
+            <span>{{ selectedOrg }}</span>
+            <el-icon class="arrow"><ArrowDown /></el-icon>
+          </div>
+        </template>
+        
+        <div class="org-selector-content">
+          <div class="org-search">
+            <el-input v-model="orgSearchQuery" placeholder="搜索机构" prefix-icon="Search" size="small" clearable />
+          </div>
+          <div class="org-list-wrapper">
+            <div 
+              v-for="org in filteredOrgs" 
+              :key="org.name" 
+              class="org-item"
+              :class="{ 'is-selected': org.selected }"
+              @click="handleOrgSelect(org)"
+            >
+              <div class="org-item-left">
+                <el-icon v-if="org.selected" class="check-icon"><Check /></el-icon>
+                <el-icon class="org-icon">
+                  <component :is="org.type === 'hub' ? 'CopyDocument' : 'House'" />
+                </el-icon>
+                <span>{{ org.name }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </el-popover>
       <div class="search-container">
         <el-input v-model="searchText" placeholder="输入菜单名称" prefix-icon="Search" size="small" />
       </div>
@@ -113,6 +145,37 @@ const handlePanelLeave = () => {
 
 const closeMegaMenu = () => {
   activeMegaMenu.value = false
+}
+
+// Org Selector Logic
+const selectedOrg = ref('总部')
+const orgSearchQuery = ref('')
+const orgList = [
+  { name: '总部', type: 'hub', selected: true },
+  { name: '广西平南网点', type: 'branch' },
+  { name: '广西柳州集配站', type: 'branch' },
+  { name: '广东深圳网点(待清算)', type: 'branch' },
+  { name: '济南历城网点', type: 'branch' },
+  { name: '济南分拨中心', type: 'hub' },
+  { name: '内蒙古呼伦贝尔网点', type: 'branch' },
+  { name: '长春分拨中心', type: 'hub' },
+  { name: '郑州中牟网点', type: 'branch' },
+  { name: '不要下单那曲CS二级网点', type: 'branch' },
+  { name: '不要下单那曲CS一级网点', type: 'branch' },
+  { name: '不要下单那曲CS分拨中心', type: 'hub' },
+  { name: '不要下单日喀则CS二级...', type: 'branch' },
+  { name: '不要下单日喀则CS一级...', type: 'branch' },
+  { name: '西安未央网点', type: 'branch' }
+]
+
+const filteredOrgs = computed(() => {
+  if (!orgSearchQuery.value) return orgList
+  return orgList.filter(org => org.name.includes(orgSearchQuery.value))
+})
+
+const handleOrgSelect = (org) => {
+  selectedOrg.value = org.name
+  orgList.forEach(item => item.selected = (item.name === org.name))
 }
 
 const isActive = (itemRoute) => {
@@ -436,6 +499,84 @@ const logo = ref({
             }
           }
         }
+      }
+    }
+  }
+}
+// Org Selector Styles
+:global(.org-selector-popover) {
+  padding: 0 !important;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.org-selector-content {
+  .org-search {
+    padding: 12px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .org-list-wrapper {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 4px 0;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: #e0e0e0;
+      border-radius: 3px;
+    }
+  }
+
+  .org-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+
+    &:hover {
+      background-color: #f5f7fa;
+    }
+
+    &.is-selected {
+      background-color: #f0f9fa;
+      
+      span {
+        color: #00b8c4;
+        font-weight: 500;
+      }
+    }
+
+    .org-item-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+
+      .check-icon {
+        color: #00b8c4;
+        font-size: 12px;
+        position: absolute;
+        left: 4px;
+      }
+
+      .org-icon {
+        font-size: 14px;
+        color: #606266;
+        margin-left: 10px;
+      }
+
+      span {
+        font-size: 12px;
+        color: #303133;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
     }
   }

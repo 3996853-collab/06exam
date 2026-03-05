@@ -1,5 +1,9 @@
 <template>
   <div class="tags-view-container">
+    <div class="tags-view-sidebar-toggle">
+      <el-icon><DArrowLeft /></el-icon>
+    </div>
+    <div class="tags-divider"></div>
     <div class="tags-view-wrapper" ref="scrollContainer" @scroll="handleScroll">
       <router-link
         v-for="tag in visitedViews"
@@ -124,9 +128,31 @@ onMounted(() => {
   height: 40px;
   width: 100%;
   background: #fff;
-  border-bottom: 1px solid #dcdcdc;
+  border-bottom: 1px solid #f0f0f0;
   display: flex;
   position: relative;
+  align-items: center;
+
+  .tags-view-sidebar-toggle {
+    width: 48px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    color: #333;
+    
+    &:hover {
+      background: #f9f9f9;
+    }
+  }
+
+  .tags-divider {
+    width: 1px;
+    height: 20px;
+    background: #f0f0f0;
+  }
 
   .tags-view-wrapper {
     flex: 1;
@@ -143,38 +169,35 @@ onMounted(() => {
     display: inline-block;
     position: relative;
     cursor: pointer;
-    height: 28px;
-    line-height: 28px;
-    border: 1px solid #dcdcdc;
-    color: #666;
-    background: #fff;
-    border-radius: 4px 4px 0 0;
-    margin: 0 5px 0 0;
-    font-size: 13px;
+    height: 40px;
+    line-height: 40px;
+    border: none;
+    color: #333;
+    background: transparent;
+    margin: 0;
+    font-size: 14px;
     transition: all 0.3s;
-    padding: 0 10px;
+    padding: 0 20px;
+    border-right: 1px solid #f0f0f0;
 
     &:hover {
-      background: #f0f0f0;
+      background: #f9f9f9;
     }
 
     &.active {
       background: #fff;
-      color: #002140;
-      font-weight: bold;
-      border-bottom-color: transparent;
+      color: #00b8c4;
+      font-weight: 500;
       z-index: 2;
 
-      &::before {
+      &::after {
         content: '';
-        background: #fff;
-        display: inline-block;
-        width: 100%;
-        height: 1px;
         position: absolute;
-        top: 0;
+        bottom: 0;
         left: 0;
-        z-index: 1;
+        width: 100%;
+        height: 2px;
+        background: #00b8c4;
       }
     }
 
