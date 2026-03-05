@@ -56,7 +56,7 @@
 
    **输出文件**：
    - `src/pages/<page-name>/index.vue`（Vue 项目）或 `src/pages/<page-name>/index.tsx`（React 项目）
-   - `src/pages/<page-name>/style.css`（必须包含 `@import "tailwindcss";`）
+   - `src/pages/<page-name>/style.css`（根据项目技术栈选择样式方案）
    - `src/pages/<page-name>/components/`（根据需要）
 
    **Vue 项目代码规范**（必须遵守）：
@@ -99,10 +99,10 @@
    export default Component;
    ```
 
-   ```css
-   /* style.css 必须以此开头 */
-   @import "tailwindcss";
-   ```
+   **样式方案选择**：
+   - **Tailwind CSS 项目**：`@import "tailwindcss";`
+   - **Element Plus + 纯 CSS 项目**：直接编写 CSS 样式
+   - **其他 UI 库项目**：根据项目实际情况选择
 
    - Vue 项目使用 `<script setup>` 语法
    - React 项目变量名必须是 `Component`，使用 `export default Component`
