@@ -1,1 +1,33 @@
+# node_modules
 node_modules
+.pnpm-store
+
+# local env files
+.env
+.env.local
+.env.*.local
+
+# test
+/tests/unit/coverage
+/tests/e2e/reports
+/cypress/videos
+/cypress/screenshots
+
+# build
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+
