@@ -20,6 +20,18 @@ export const constantRoutes = [
     ]
   },
   {
+    path: '/order-entry',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        name: 'OrderEntry',
+        component: () => import('@/views/order-entry/index.vue'),
+        meta: { title: '录单', icon: 'EditPen' }
+      }
+    ]
+  },
+  {
     path: '/operation-transport',
     component: Layout,
     children: [
@@ -34,12 +46,19 @@ export const constantRoutes = [
   {
     path: '/management-center',
     component: Layout,
+    redirect: '/management-center/batch-order-entry',
     children: [
       {
         path: '',
         name: 'ManagementCenter',
         component: () => import('@/views/dashboard/index.vue'),
         meta: { title: '经营管理中心', icon: 'DataBoard' }
+      },
+      {
+        path: 'batch-order-entry',
+        name: 'BatchOrderEntry',
+        component: () => import('@/views/batch-order-entry/index.vue'),
+        meta: { title: '批量录单', icon: 'Tickets' }
       }
     ]
   },

@@ -1,1 +1,0 @@
-import{_ as a,c as s,a as t,o}from"./index-BzN37FsL.js";const d={},n={class:"dashboard-container"};function c(r,e){return o(),s("div",n,[...e[0]||(e[0]=[t("div",{class:"dashboard-text"},"欢迎使用 vue3-element-admin",-1)])])}const i=a(d,[["render",c],["__scopeId","data-v-361e2fad"]]);export{i as default};

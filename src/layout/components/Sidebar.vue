@@ -81,7 +81,7 @@
               {{ group.title }}
             </div>
             <ul class="group-list">
-              <li v-for="item in group.items" :key="item">{{ item }}</li>
+              <li v-for="item in group.items" :key="item" @click="handleMegaItemClick(item)">{{ item }}</li>
             </ul>
           </div>
         </div>
@@ -189,9 +189,28 @@ const isActive = (itemRoute) => {
 
 const handleMenuClick = (route) => {
   if (route.children && route.children.length > 0) {
-    router.push(route.children[0].path)
+    const firstChildPath = route.children[0].path
+    if (!firstChildPath) {
+      router.push(route.path)
+    } else if (firstChildPath.startsWith('/')) {
+      router.push(firstChildPath)
+    } else {
+      router.push(`${route.path.replace(/\/$/, '')}/${firstChildPath}`)
+    }
   } else {
     router.push(route.path)
+  }
+  closeMegaMenu()
+}
+
+const handleMegaItemClick = (itemName) => {
+  if (itemName === '录单') {
+    router.push('/order-entry')
+  } else if (itemName === '批量录单') {
+    router.push('/management-center/batch-order-entry')
+  } else {
+    // For other mock items, just show a message or do nothing
+    console.log('Clicked mega menu item:', itemName)
   }
   closeMegaMenu()
 }
@@ -218,6 +237,10 @@ const megaMenuData = [
     {
       title: '司机管理',
       items: ['司机信息', '考勤监控', 'T页信息', '连续补贴', '奖点信息', '违法信息', '事务管理', 'IC卡记录']
+    },
+    {
+      title: '业务功能',
+      items: ['录单', '批量录单']
     },
     {
       title: '运输计划',
