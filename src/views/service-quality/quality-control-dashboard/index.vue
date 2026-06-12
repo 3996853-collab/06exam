@@ -23,7 +23,7 @@
     <!-- KPI 卡片展示区 -->
     <div class="kpi-section-title">
       <el-icon class="section-icon"><Van /></el-icon>
-      履约域指标 (正向时效指标)
+      履约域指标 (正向时效)
     </div>
     <div class="kpi-grid delivery-grid">
       <KpiCard
@@ -41,7 +41,7 @@
 
     <div class="kpi-section-title mt-6">
       <el-icon class="section-icon"><ChatDotSquare /></el-icon>
-      客诉域指标 (服务质量与异常监控)
+      客诉域指标 (质量异常)
     </div>
     <div class="kpi-grid complaint-grid">
       <KpiCard
@@ -276,7 +276,7 @@ const handleChartClick = (data: { date: string; seriesName: string; value: any }
       timeRange: timeRange.value,
       province: province.value,
       station: station.value,
-      date: data.date // Pass specific date to detail page
+      date: data.date
     }
   });
 };
@@ -369,9 +369,37 @@ const handleChartClick = (data: { date: string; seriesName: string; value: any }
   }
 
   @media (max-width: 768px) {
+    padding: 12px;
+    
+    .dashboard-header {
+      margin-bottom: 16px;
+      .header-title {
+        font-size: 17px;
+      }
+      .header-meta {
+        display: none; // Hide extra header text on small screens
+      }
+    }
+
+    .kpi-section-title {
+      font-size: 13px;
+      margin: 12px 0 8px 0;
+    }
+
+    .kpi-grid {
+      gap: 10px;
+      margin-bottom: 12px;
+
+      &.delivery-grid, &.complaint-grid {
+        grid-template-columns: repeat(2, 1fr); /* 2 columns for phones */
+      }
+    }
+  }
+
+  @media (max-width: 400px) {
     .kpi-grid {
       &.delivery-grid, &.complaint-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr; /* 1 column on very narrow screens */
       }
     }
   }

@@ -86,6 +86,7 @@ const getChartOptions = (): echarts.EChartsOption => {
     return {
       tooltip: {
         trigger: 'axis',
+        confine: true, // Prevent tooltips from going off-screen on mobile
         formatter: (params: any) => {
           let res = `<div style="font-weight: bold; margin-bottom: 4px;">${params[0].name}</div>`;
           params.forEach((item: any) => {
@@ -109,8 +110,8 @@ const getChartOptions = (): echarts.EChartsOption => {
         textStyle: { color: 'rgba(0, 0, 0, 0.8)' }
       },
       grid: {
-        left: '4%',
-        right: '4%',
+        left: '2%',
+        right: '2%',
         bottom: '8%',
         top: '12%',
         containLabel: true
@@ -119,7 +120,7 @@ const getChartOptions = (): echarts.EChartsOption => {
         type: 'category',
         data: props.dates,
         axisLine: { lineStyle: { color: 'rgb(228, 231, 237)' } },
-        axisLabel: { color: 'rgb(96, 98, 102)', fontSize: 11 }
+        axisLabel: { color: 'rgb(96, 98, 102)', fontSize: 10 }
       },
       yAxis: [
         {
@@ -138,7 +139,7 @@ const getChartOptions = (): echarts.EChartsOption => {
         },
         {
           type: 'value',
-          name: '单量 (分母)',
+          name: '单量',
           axisLabel: { color: 'rgb(96, 98, 102)' },
           splitLine: { show: false }
         }
@@ -163,7 +164,7 @@ const getChartOptions = (): echarts.EChartsOption => {
           type: 'line',
           yAxisIndex: 0,
           data: props.rates,
-          symbolSize: 8,
+          symbolSize: 6,
           showSymbol: true,
           itemStyle: { color: 'rgb(0, 190, 190)' },
           lineStyle: {
@@ -185,9 +186,9 @@ const getChartOptions = (): echarts.EChartsOption => {
                 },
                 label: {
                   position: 'end',
-                  formatter: `目标: ${(threshold * 100).toFixed(0)}%`,
+                  formatter: `${(threshold * 100).toFixed(0)}%`,
                   color: 'rgb(240, 0, 0)',
-                  fontSize: 11
+                  fontSize: 10
                 }
               }
             ]
@@ -197,7 +198,6 @@ const getChartOptions = (): echarts.EChartsOption => {
     };
   } else {
     // 2. Ranking Mode: Horizontal Bar Chart showing Bottom 10 (Worst performers)
-    // Reverse ranking data so the worst of the worst is at the top of the horizontal bar chart
     const dataCopy = [...props.rankingData].reverse();
     const names = dataCopy.map(d => d.name);
     const rates = dataCopy.map(d => d.rate);
@@ -206,6 +206,7 @@ const getChartOptions = (): echarts.EChartsOption => {
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
+        confine: true, // Restrict tooltip inside screen bounds
         formatter: (params: any) => {
           const item = params[0];
           return `<div style="font-weight: bold; margin-bottom: 4px;">${item.name}</div>
@@ -220,8 +221,8 @@ const getChartOptions = (): echarts.EChartsOption => {
         textStyle: { color: 'rgba(0, 0, 0, 0.8)' }
       },
       grid: {
-        left: '3%',
-        right: '6%',
+        left: '2%',
+        right: '10%',
         bottom: '5%',
         top: '5%',
         containLabel: true
@@ -239,7 +240,7 @@ const getChartOptions = (): echarts.EChartsOption => {
       yAxis: {
         type: 'category',
         data: names,
-        axisLabel: { color: 'rgba(0, 0, 0, 0.8)', fontSize: 12 },
+        axisLabel: { color: 'rgba(0, 0, 0, 0.8)', fontSize: 11 },
         axisLine: { lineStyle: { color: 'rgb(228, 231, 237)' } }
       },
       series: [
@@ -247,8 +248,7 @@ const getChartOptions = (): echarts.EChartsOption => {
           name: props.metricMeta.name,
           type: 'bar',
           data: rates,
-          barWidth: '50%',
-          // Use red warning colors for underperformers
+          barWidth: '60%',
           itemStyle: {
             color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
               { offset: 0, color: 'rgba(240, 0, 0, 0.85)' },
@@ -262,7 +262,7 @@ const getChartOptions = (): echarts.EChartsOption => {
             formatter: (params: any) => `${(params.value * 100).toFixed(1)}%`,
             color: 'rgb(240, 0, 0)',
             fontWeight: 'bold',
-            fontSize: 11
+            fontSize: 10
           },
           markLine: {
             silent: true,
@@ -271,15 +271,15 @@ const getChartOptions = (): echarts.EChartsOption => {
               {
                 xAxis: threshold,
                 lineStyle: {
-                  color: 'rgba(0, 0, 0, 0.4)',
+                  color: 'rgba(0, 0, 0, 0.3)',
                   type: 'dashed',
-                  width: 1.5
+                  width: 1.2
                 },
                 label: {
                   position: 'end',
-                  formatter: `基准: ${(threshold * 100).toFixed(0)}%`,
-                  color: 'rgba(0,0,0,0.6)',
-                  fontSize: 11
+                  formatter: `${(threshold * 100).toFixed(0)}%`,
+                  color: 'rgba(0,0,0,0.5)',
+                  fontSize: 10
                 }
               }
             ]
@@ -439,6 +439,66 @@ watch(
   }
   :deep(.el-radio-button__inner:hover) {
     color: rgb(0, 190, 190);
+  }
+
+  /* Mobile Styles */
+  @media (max-width: 768px) {
+    padding: 12px;
+    margin-top: 12px;
+
+    .chart-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+      margin-bottom: 12px;
+
+      .header-left {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        
+        .chart-title {
+          font-size: 14px;
+        }
+
+        .view-tab-toggle {
+          width: 100%;
+          display: flex;
+          :deep(.el-radio-button) {
+            flex: 1;
+            .el-radio-button__inner {
+              width: 100%;
+              text-align: center;
+              padding: 8px 0;
+              font-size: 12px;
+            }
+          }
+        }
+      }
+
+      .header-right {
+        width: 100%;
+        justify-content: flex-start;
+
+        .chart-legend-custom {
+          flex-wrap: wrap;
+          gap: 10px;
+          font-size: 11px;
+        }
+
+        .ranking-filters {
+          width: 100%;
+          justify-content: space-between;
+          .filter-label {
+            font-size: 12px;
+          }
+        }
+      }
+    }
+
+    .echart-div {
+      height: 320px !important;
+    }
   }
 }
 </style>

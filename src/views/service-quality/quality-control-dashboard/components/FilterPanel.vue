@@ -2,7 +2,7 @@
   <div class="filter-panel">
     <div class="filter-left">
       <!-- 固定的总部标识 & 时间选择 -->
-      <div class="filter-item">
+      <div class="filter-item hq-container">
         <span class="hq-label">
           <el-icon class="mr-1"><OfficeBuilding /></el-icon>
           {{ headquarters }}
@@ -11,9 +11,9 @@
       </div>
 
       <!-- 时间选择器 -->
-      <div class="filter-item">
-        <span class="filter-label">时间范围</span>
-        <el-radio-group v-model="localTimeRange" size="default" @change="emitFilters">
+      <div class="filter-item flex-grow-mobile">
+        <span class="filter-label">时间</span>
+        <el-radio-group v-model="localTimeRange" size="default" class="full-width-mobile" @change="emitFilters">
           <el-radio-button value="7d">近 7 天</el-radio-button>
           <el-radio-button value="30d">近 30 天</el-radio-button>
         </el-radio-group>
@@ -30,6 +30,7 @@
           clearable
           size="default"
           style="width: 180px"
+          class="select-mobile"
           @change="handleProvinceChange"
         >
           <el-option v-for="p in provinces" :key="p" :label="p" :value="p" />
@@ -46,6 +47,7 @@
           clearable
           size="default"
           style="width: 200px"
+          class="select-mobile"
           @change="emitFilters"
         >
           <el-option v-for="s in filteredStations" :key="s" :label="s" :value="s" />
@@ -176,6 +178,52 @@ const emitFilters = () => {
   }
   :deep(.el-select .el-input.is-focus .el-input__wrapper) {
     box-shadow: 0 0 0 1px rgb(0, 190, 190) inset !important;
+  }
+
+  /* Mobile Responsive rules */
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 14px;
+    gap: 12px;
+
+    .filter-left, .filter-right {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .filter-item {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      
+      .filter-label {
+        min-width: 45px;
+      }
+      
+      .full-width-mobile {
+        width: 100%;
+        display: flex;
+        :deep(.el-radio-button) {
+          flex: 1;
+          .el-radio-button__inner {
+            width: 100%;
+            text-align: center;
+          }
+        }
+      }
+
+      .select-mobile {
+        width: 100% !important;
+        flex-grow: 1;
+      }
+    }
+
+    .hq-container {
+      display: none; /* Hide Headquarters tag on mobile to save screen height */
+    }
   }
 }
 </style>

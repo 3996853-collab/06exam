@@ -8,7 +8,7 @@
     @click="$emit('select')"
   >
     <div class="card-header">
-      <span class="metric-name">{{ meta.name }}</span>
+      <span class="metric-name" :title="meta.name">{{ meta.name }}</span>
       <el-tag 
         :type="isBreached ? 'danger' : 'success'" 
         size="small" 
@@ -24,7 +24,7 @@
         {{ (rate * 100).toFixed(1) }}%
       </div>
       <div class="metric-detail">
-        <span class="label">异常数/总单量:</span>
+        <span class="label">异常数/总数:</span>
         <span class="numerator text-danger-val">{{ anomalyCount.toLocaleString() }}</span>
         <span class="divider">/</span>
         <span class="denominator">{{ denominator.toLocaleString() }}</span>
@@ -76,10 +76,8 @@ const isBreached = computed(() => {
 // Calculate abnormal count
 const anomalyCount = computed(() => {
   if (props.meta.isPositive) {
-    // For positive rates (e.g. 95%), anomalies = denominator - numerator
     return Math.max(0, props.denominator - props.numerator);
   } else {
-    // For negative rates (e.g. 2% complaint rate), anomalies = numerator
     return props.numerator;
   }
 });
@@ -155,6 +153,7 @@ const anomalyCount = computed(() => {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
+    gap: 6px;
 
     .metric-name {
       font-size: 14px;
@@ -169,6 +168,7 @@ const anomalyCount = computed(() => {
       font-size: 11px;
       border-radius: 4px;
       padding: 0 6px;
+      flex-shrink: 0;
     }
   }
 
@@ -193,6 +193,7 @@ const anomalyCount = computed(() => {
       display: flex;
       align-items: center;
       gap: 3px;
+      flex-wrap: wrap;
 
       .label {
         margin-right: 2px;
@@ -240,6 +241,36 @@ const anomalyCount = computed(() => {
         font-size: 10px;
         transition: transform 0.2s;
       }
+    }
+  }
+
+  /* Mobile style overrides */
+  @media (max-width: 768px) {
+    padding: 12px;
+
+    .card-header {
+      margin-bottom: 6px;
+      
+      .metric-name {
+        font-size: 13px;
+      }
+    }
+
+    .card-body {
+      margin-bottom: 8px;
+
+      .metric-rate {
+        font-size: 22px;
+      }
+
+      .metric-detail {
+        font-size: 11px;
+        gap: 2px;
+      }
+    }
+
+    .card-footer {
+      padding-top: 6px;
     }
   }
 }
