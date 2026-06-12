@@ -204,20 +204,44 @@ const handleMenuClick = (route) => {
 }
 
 const handleMegaItemClick = (itemName) => {
-  if (itemName === '录单') {
-    router.push('/order-entry')
-  } else if (itemName === '批量录单') {
-    router.push('/management-center/batch-order-entry')
-  } else if (itemName === '录单antigravity') {
-    router.push('/order-entry/antigravity')
-  } else if (itemName === '品控工作台') {
-    router.push('/service-quality/quality-control-workbench')
-  } else {
-    // For other mock items, just show a message or do nothing
-    console.log('Clicked mega menu item:', itemName)
+    if (itemName === '录单') {
+      router.push('/order-entry')
+    } else if (itemName === '批量录单') {
+      router.push('/management-center/batch-order-entry')
+    } else if (itemName === '录单antigravity') {
+      router.push('/order-entry/antigravity')
+    } else if (itemName === '品控工作台') {
+      router.push('/service-quality/quality-control-workbench')
+    } else if (itemName === '品控数据看板') {
+      router.push('/service-quality/quality-control-dashboard')
+    } else if (itemName === '省份流向仪表盘') {
+      router.push('/data-analysis/province-flow-dashboard')
+    } else if (itemName === '智能对话') {
+      router.push('/smart-chat')
+    } else if (itemName === '数据看板') {
+      router.push('/data-analysis/data-dashboard')
+    } else if (itemName === 'SKILL权限管理') {
+      router.push('/system-management/skill-permission-management')
+    } else if (itemName === '问数对话') {
+      router.push('/chat')
+    } else if (itemName === '问数订阅') {
+      router.push('/data-analysis/smart-subscription')
+    } else if (itemName === '规则配置中心') {
+      router.push('/rule-config')
+    } else if (itemName === '规则构建器') {
+      router.push('/rule-config/builder')
+    } else if (itemName === '智能配置助手') {
+      router.push('/rule-config/ai')
+    } else if (itemName === '模板中心') {
+      router.push('/rule-config/template')
+    } else if (itemName === '物流策略预警平台') {
+      router.push('/logistics-warning/dashboard')
+    } else {
+      // For other mock items, just show a message or do nothing
+      console.log('Clicked mega menu item:', itemName)
+    }
+    closeMegaMenu()
   }
-  closeMegaMenu()
-}
 
 // Hardcoded Mega Menu Data to match the screenshot
 const megaMenuData = [
@@ -228,7 +252,19 @@ const megaMenuData = [
     },
     {
       title: '服务质量',
-      items: ['品控工作台']
+      items: ['品控工作台', '品控数据看板']
+    },
+    {
+      title: '数据分析',
+      items: ['省份流向仪表盘', '智能对话', '数据看板', '问数对话', '问数订阅']
+    },
+    {
+      title: '系统管理',
+      items: ['SKILL权限管理']
+    },
+    {
+      title: '预警配置',
+      items: ['规则配置中心', '规则构建器', '智能配置助手', '模板中心', '物流策略预警平台']
     }
   ]
 ]
