@@ -16,6 +16,8 @@
     <FilterPanel
       v-model:timeRange="timeRange"
       v-model:customDateRange="customDateRange"
+      v-model:monthRange="monthRange"
+      v-model:granularity="granularity"
       v-model:province="province"
       v-model:station="station"
       @change="handleFilterChange"
@@ -93,6 +95,8 @@ const router = useRouter();
 // Global state variables
 const timeRange = ref<'7d' | '30d' | ''>('30d');
 const customDateRange = ref<[string, string] | null>(null);
+const monthRange = ref<[string, string] | null>(null);
+const granularity = ref<'day' | 'month'>('day');
 const province = ref<string>('');
 const station = ref<string>('');
 const activeKpi = ref<string>('orderAccept');
@@ -121,8 +125,11 @@ onMounted(() => {
   if (route.query.station) station.value = route.query.station as string;
 });
 
-// Calculate the start date limit based on either customDateRange or timeRange preset
+// Calculate the start date limit
 const minDateLimit = computed(() => {
+  if (granularity.value === 'month' && monthRange.value && monthRange.value[0]) {
+    return dayjs(monthRange.value[0]).startOf('month').format('YYYY-MM-DD');
+  }
   if (customDateRange.value && customDateRange.value[0]) {
     return customDateRange.value[0];
   }
@@ -132,23 +139,36 @@ const minDateLimit = computed(() => {
   return maxDate.subtract(days, 'day').format('YYYY-MM-DD');
 });
 
-// Calculate the end date limit based on either customDateRange or the latest mock record date
+// Calculate the end date limit
 const maxDateLimit = computed(() => {
+  if (granularity.value === 'month' && monthRange.value && monthRange.value[1]) {
+    return dayjs(monthRange.value[1]).endOf('month').format('YYYY-MM-DD');
+  }
   if (customDateRange.value && customDateRange.value[1]) {
     return customDateRange.value[1];
   }
   return mockMetricRecords[mockMetricRecords.length - 1].date;
 });
 
-// List of dates for X-axis matching the selection
+// List of X-axis labels: days or months depending on granularity
 const datesList = computed(() => {
   const list: string[] = [];
   const start = dayjs(minDateLimit.value);
   const end = dayjs(maxDateLimit.value);
-  const diffDays = end.diff(start, 'day');
-  
-  for (let i = 0; i <= diffDays; i++) {
-    list.push(start.add(i, 'day').format('YYYY-MM-DD'));
+
+  if (granularity.value === 'month') {
+    // Generate month labels YYYY-MM
+    const startMonth = start.startOf('month');
+    const endMonth = end.startOf('month');
+    const diffMonths = endMonth.diff(startMonth, 'month');
+    for (let i = 0; i <= diffMonths; i++) {
+      list.push(startMonth.add(i, 'month').format('YYYY-MM'));
+    }
+  } else {
+    const diffDays = end.diff(start, 'day');
+    for (let i = 0; i <= diffDays; i++) {
+      list.push(start.add(i, 'day').format('YYYY-MM-DD'));
+    }
   }
   return list;
 });
@@ -203,9 +223,15 @@ const kpiAggregates = computed(() => {
 const singleChartData = computed(() => {
   const rates: number[] = [];
   const volumes: number[] = [];
-  
-  datesList.value.forEach(d => {
-    const dateRecords = filteredRecords.value.filter(r => r.date === d);
+
+  datesList.value.forEach(label => {
+    let dateRecords: DailyMetricRecord[];
+    if (granularity.value === 'month') {
+      // Filter all daily records whose YYYY-MM matches the month label
+      dateRecords = filteredRecords.value.filter(r => r.date.startsWith(label));
+    } else {
+      dateRecords = filteredRecords.value.filter(r => r.date === label);
+    }
     const agg = aggregateMetric(dateRecords, activeKpi.value);
     rates.push(agg.rate);
     volumes.push(agg.denominator);

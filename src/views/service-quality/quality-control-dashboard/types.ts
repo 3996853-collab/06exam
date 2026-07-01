@@ -59,7 +59,7 @@ export const METRIC_CONFIGS: MetricMeta[] = [
     threshold: 0.95, 
     expectTitle: '应接单时间', 
     actualTitle: '实际接单时间',
-    fractionLabel: '不及时接单数/订单总数'
+    fractionLabel: '及时接单数/订单总数'
   },
   { 
     key: 'dispatch', 
