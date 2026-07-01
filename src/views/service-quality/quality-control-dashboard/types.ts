@@ -15,7 +15,7 @@ export interface DailyMetricRecord {
   orderAccept: MetricValue;   // 订单接单及时率
   pickup: MetricValue;        // 提货及时率
   delivery: MetricValue;      // 签收及时率
-  dispatch: MetricValue;      // 交件及时率
+  dispatch: MetricValue;      // 交货及时率
   podReturn: MetricValue;     // 回单返回及时率
 
   // 客诉域
@@ -45,22 +45,104 @@ export interface MetricMeta {
   threshold: number;   // 达标阈值 (0 - 1)
   expectTitle: string; // Detail page expectation header
   actualTitle: string; // Detail page actual header
+  fractionLabel: string; // The label replacing "异常数/总数:"
 }
 
 // Global metric configurations
 export const METRIC_CONFIGS: MetricMeta[] = [
-  // 履约域
-  { key: 'orderAccept', name: '订单接单及时率', domain: 'delivery', isPositive: true, threshold: 0.95, expectTitle: '应接单时间', actualTitle: '实际接单时间' },
-  { key: 'pickup', name: '提货及时率', domain: 'delivery', isPositive: true, threshold: 0.92, expectTitle: '应提货时间', actualTitle: '实际提货时间' },
-  { key: 'delivery', name: '签收及时率', domain: 'delivery', isPositive: true, threshold: 0.90, expectTitle: '应签收时间', actualTitle: '实际签收时间' },
-  { key: 'dispatch', name: '交件及时率', domain: 'delivery', isPositive: true, threshold: 0.93, expectTitle: '应交件时间', actualTitle: '实际交件时间' },
-  { key: 'podReturn', name: '回单返回及时率', domain: 'delivery', isPositive: true, threshold: 0.95, expectTitle: '应返回时间', actualTitle: '实际返回时间' },
+  // 履约域 (Moved "交货及时率" before "提货及时率")
+  { 
+    key: 'orderAccept', 
+    name: '订单接单及时率', 
+    domain: 'delivery', 
+    isPositive: true, 
+    threshold: 0.95, 
+    expectTitle: '应接单时间', 
+    actualTitle: '实际接单时间',
+    fractionLabel: '不及时接单数/订单总数'
+  },
+  { 
+    key: 'dispatch', 
+    name: '交货及时率', 
+    domain: 'delivery', 
+    isPositive: true, 
+    threshold: 0.93, 
+    expectTitle: '应交货时间', 
+    actualTitle: '实际交货时间',
+    fractionLabel: '交货及时票数/应交货票数'
+  },
+  { 
+    key: 'pickup', 
+    name: '提货及时率', 
+    domain: 'delivery', 
+    isPositive: true, 
+    threshold: 0.92, 
+    expectTitle: '应提货时间', 
+    actualTitle: '实际提货时间',
+    fractionLabel: '提货及时票数/应提货票数'
+  },
+  { 
+    key: 'delivery', 
+    name: '签收及时率', 
+    domain: 'delivery', 
+    isPositive: true, 
+    threshold: 0.90, 
+    expectTitle: '应签收时间', 
+    actualTitle: '实际签收时间',
+    fractionLabel: '签收及时票数/应签票数'
+  },
+  { 
+    key: 'podReturn', 
+    name: '回单返回及时率', 
+    domain: 'delivery', 
+    isPositive: true, 
+    threshold: 0.95, 
+    expectTitle: '应返回时间', 
+    actualTitle: '实际返回时间',
+    fractionLabel: '回单返回及时票数/应返回回单数'
+  },
 
   // 客诉域
-  { key: 'firstResponse', name: '工单时效内首响率', domain: 'complaint', isPositive: true, threshold: 0.90, expectTitle: '应首响时间', actualTitle: '实际首响时间' },
-  { key: 'completion', name: '工单时效内完结率', domain: 'complaint', isPositive: true, threshold: 0.95, expectTitle: '应完结时间', actualTitle: '实际完结时间' },
-  { key: 'repeatComplaint', name: '工单重复投诉率', domain: 'complaint', isPositive: false, threshold: 0.05, expectTitle: '首次投诉时间', actualTitle: '重复投诉时间' },
-  { key: 'arbitration', name: '仲裁率', domain: 'complaint', isPositive: false, threshold: 0.02, expectTitle: '投诉时间', actualTitle: '仲裁判定时间' }
+  { 
+    key: 'firstResponse', 
+    name: '工单时效内首响率', 
+    domain: 'complaint', 
+    isPositive: true, 
+    threshold: 0.90, 
+    expectTitle: '应首响时间', 
+    actualTitle: '实际首响时间',
+    fractionLabel: '时效内首响工单量/总工单量'
+  },
+  { 
+    key: 'completion', 
+    name: '工单时效内完结率', 
+    domain: 'complaint', 
+    isPositive: true, 
+    threshold: 0.95, 
+    expectTitle: '应完结时间', 
+    actualTitle: '实际完结时间',
+    fractionLabel: '时效内完结工单/总工单量'
+  },
+  { 
+    key: 'repeatComplaint', 
+    name: '工单重复投诉率', 
+    domain: 'complaint', 
+    isPositive: false, 
+    threshold: 0.05, 
+    expectTitle: '首次投诉时间', 
+    actualTitle: '重复投诉时间',
+    fractionLabel: '重复投诉工单量/总工单量'
+  },
+  { 
+    key: 'arbitration', 
+    name: '仲裁率', 
+    domain: 'complaint', 
+    isPositive: false, 
+    threshold: 0.02, 
+    expectTitle: '投诉时间', 
+    actualTitle: '仲裁判定时间',
+    fractionLabel: '仲裁成立单量/（派件签收单量+寄件单量+中转出港单量）'
+  }
 ];
 
 // Province-Station mapping

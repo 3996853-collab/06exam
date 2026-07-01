@@ -11,12 +11,23 @@
       </div>
 
       <!-- 时间选择器 -->
-      <div class="filter-item flex-grow-mobile">
-        <span class="filter-label">时间</span>
-        <el-radio-group v-model="localTimeRange" size="default" class="full-width-mobile" @change="emitFilters">
+      <div class="filter-item flex-grow-mobile time-picker-container">
+        <span class="filter-label">时间范围</span>
+        <el-radio-group v-model="localTimeRange" size="default" class="full-width-mobile" @change="handleTimeRangeChange">
           <el-radio-button value="7d">近 7 天</el-radio-button>
           <el-radio-button value="30d">近 30 天</el-radio-button>
         </el-radio-group>
+        <el-date-picker
+          v-model="localCustomDateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          size="default"
+          value-format="YYYY-MM-DD"
+          class="custom-date-picker-input"
+          @change="handleCustomDateChange"
+        />
       </div>
     </div>
 
@@ -63,13 +74,15 @@ import { PROVINCES, PROVINCE_STATIONS_MAP, HEADQUARTERS, ALL_STATIONS } from '..
 import { OfficeBuilding } from '@element-plus/icons-vue';
 
 const props = defineProps<{
-  timeRange: '7d' | '30d';
+  timeRange: '7d' | '30d' | '';
+  customDateRange: [string, string] | null;
   province: string;
   station: string;
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:timeRange', val: '7d' | '30d'): void;
+  (e: 'update:timeRange', val: '7d' | '30d' | ''): void;
+  (e: 'update:customDateRange', val: [string, string] | null): void;
   (e: 'update:province', val: string): void;
   (e: 'update:station', val: string): void;
   (e: 'change'): void;
@@ -77,6 +90,7 @@ const emit = defineEmits<{
 
 // Local model definitions
 const localTimeRange = ref(props.timeRange);
+const localCustomDateRange = ref<[string, string] | null>(props.customDateRange);
 const localProvince = ref(props.province);
 const localStation = ref(props.station);
 
@@ -94,8 +108,23 @@ const filteredStations = computed(() => {
 
 // Watch for prop updates to sync local state
 watch(() => props.timeRange, (newVal) => { localTimeRange.value = newVal; });
+watch(() => props.customDateRange, (newVal) => { localCustomDateRange.value = newVal; });
 watch(() => props.province, (newVal) => { localProvince.value = newVal; });
 watch(() => props.station, (newVal) => { localStation.value = newVal; });
+
+// Handle preset time range changes
+const handleTimeRangeChange = (val: any) => {
+  localCustomDateRange.value = null; // Clear custom range
+  emitFilters();
+};
+
+// Handle custom date picker changes
+const handleCustomDateChange = (val: any) => {
+  if (val && val.length > 0) {
+    localTimeRange.value = ''; // Deselect preset buttons
+  }
+  emitFilters();
+};
 
 // Handle province change (resets station selection)
 const handleProvinceChange = (val: string) => {
@@ -106,6 +135,7 @@ const handleProvinceChange = (val: string) => {
 // Emit current values up
 const emitFilters = () => {
   emit('update:timeRange', localTimeRange.value);
+  emit('update:customDateRange', localCustomDateRange.value);
   emit('update:province', localProvince.value);
   emit('update:station', localStation.value);
   
@@ -133,6 +163,22 @@ const emitFilters = () => {
     align-items: center;
     gap: 20px;
     flex-wrap: wrap;
+  }
+
+  .time-picker-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .custom-date-picker-input {
+      width: 240px;
+      :deep(.el-input__wrapper) {
+        box-shadow: 0 0 0 1px rgb(220, 223, 230) inset;
+        &:hover {
+          box-shadow: 0 0 0 1px rgb(190, 190, 190) inset;
+        }
+      }
+    }
   }
 
   .filter-item {
@@ -192,6 +238,17 @@ const emitFilters = () => {
       align-items: stretch;
       gap: 10px;
       width: 100%;
+    }
+
+    .time-picker-container {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      width: 100%;
+
+      .custom-date-picker-input {
+        width: 100% !important;
+      }
     }
 
     .filter-item {

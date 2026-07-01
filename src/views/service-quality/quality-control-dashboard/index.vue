@@ -15,6 +15,7 @@
     <!-- 过滤器面板 -->
     <FilterPanel
       v-model:timeRange="timeRange"
+      v-model:customDateRange="customDateRange"
       v-model:province="province"
       v-model:station="station"
       @change="handleFilterChange"
@@ -90,7 +91,8 @@ const route = useRoute();
 const router = useRouter();
 
 // Global state variables
-const timeRange = ref<'7d' | '30d'>('30d');
+const timeRange = ref<'7d' | '30d' | ''>('30d');
+const customDateRange = ref<[string, string] | null>(null);
 const province = ref<string>('');
 const station = ref<string>('');
 const activeKpi = ref<string>('orderAccept');
@@ -111,28 +113,42 @@ const activeMetricMeta = computed(() => {
 // Sync queries on mounted to restore selection from details page
 onMounted(() => {
   if (route.query.metric) activeKpi.value = route.query.metric as string;
-  if (route.query.timeRange) timeRange.value = route.query.timeRange as '7d' | '30d';
+  if (route.query.timeRange) timeRange.value = route.query.timeRange as '7d' | '30d' | '';
+  if (route.query.startDate && route.query.endDate) {
+    customDateRange.value = [route.query.startDate as string, route.query.endDate as string];
+  }
   if (route.query.province) province.value = route.query.province as string;
   if (route.query.station) station.value = route.query.station as string;
 });
 
-// Calculate the start date offset based on time range selection
+// Calculate the start date limit based on either customDateRange or timeRange preset
 const minDateLimit = computed(() => {
+  if (customDateRange.value && customDateRange.value[0]) {
+    return customDateRange.value[0];
+  }
   const maxDateStr = mockMetricRecords[mockMetricRecords.length - 1].date;
   const maxDate = dayjs(maxDateStr);
   const days = timeRange.value === '7d' ? 7 : 30;
   return maxDate.subtract(days, 'day').format('YYYY-MM-DD');
 });
 
-// List of dates for X-axis matching the timeRange selection
+// Calculate the end date limit based on either customDateRange or the latest mock record date
+const maxDateLimit = computed(() => {
+  if (customDateRange.value && customDateRange.value[1]) {
+    return customDateRange.value[1];
+  }
+  return mockMetricRecords[mockMetricRecords.length - 1].date;
+});
+
+// List of dates for X-axis matching the selection
 const datesList = computed(() => {
   const list: string[] = [];
-  const maxDateStr = mockMetricRecords[mockMetricRecords.length - 1].date;
-  const maxDate = dayjs(maxDateStr);
-  const days = timeRange.value === '7d' ? 7 : 30;
+  const start = dayjs(minDateLimit.value);
+  const end = dayjs(maxDateLimit.value);
+  const diffDays = end.diff(start, 'day');
   
-  for (let i = days - 1; i >= 0; i--) {
-    list.push(maxDate.subtract(i, 'day').format('YYYY-MM-DD'));
+  for (let i = 0; i <= diffDays; i++) {
+    list.push(start.add(i, 'day').format('YYYY-MM-DD'));
   }
   return list;
 });
@@ -141,7 +157,7 @@ const datesList = computed(() => {
 const filteredRecords = computed(() => {
   return mockMetricRecords.filter(r => {
     // Date filter
-    const isWithinDate = r.date > minDateLimit.value;
+    const isWithinDate = r.date >= minDateLimit.value && r.date <= maxDateLimit.value;
     if (!isWithinDate) return false;
     
     // Province filter
@@ -204,7 +220,7 @@ const rankingDataList = computed(() => {
   const dimension = rankingDim.value; // 'province' | 'station'
   
   // Filter records by date range ONLY (to compare entities under the same time range)
-  const dateRangeRecords = mockMetricRecords.filter(r => r.date > minDateLimit.value);
+  const dateRangeRecords = mockMetricRecords.filter(r => r.date >= minDateLimit.value && r.date <= maxDateLimit.value);
   
   // Group metrics by name of province/station
   const entityMap: Record<string, { numerator: number; denominator: number }> = {};
@@ -260,6 +276,8 @@ const navigateToDetail = (metricKey: string) => {
     query: {
       metric: metricKey,
       timeRange: timeRange.value,
+      startDate: customDateRange.value ? customDateRange.value[0] : '',
+      endDate: customDateRange.value ? customDateRange.value[1] : '',
       province: province.value,
       station: station.value
     }
@@ -274,6 +292,8 @@ const handleChartClick = (data: { date: string; seriesName: string; value: any }
     query: {
       metric: activeKpi.value,
       timeRange: timeRange.value,
+      startDate: customDateRange.value ? customDateRange.value[0] : '',
+      endDate: customDateRange.value ? customDateRange.value[1] : '',
       province: province.value,
       station: station.value,
       date: data.date

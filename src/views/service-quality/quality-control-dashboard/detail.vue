@@ -154,6 +154,8 @@ const loading = ref(true);
 // Extract query params
 const queryMetric = computed(() => (route.query.metric as string) || 'orderAccept');
 const queryTimeRange = computed(() => (route.query.timeRange as string) || '30d');
+const queryStartDate = computed(() => (route.query.startDate as string) || '');
+const queryEndDate = computed(() => (route.query.endDate as string) || '');
 const queryProvince = computed(() => (route.query.province as string) || '');
 const queryStation = computed(() => (route.query.station as string) || '');
 const queryDate = computed(() => (route.query.date as string) || '');
@@ -168,6 +170,9 @@ const dateRangeText = computed(() => {
   if (queryDate.value) {
     return queryDate.value;
   }
+  if (queryStartDate.value && queryEndDate.value) {
+    return `${queryStartDate.value} 至 ${queryEndDate.value}`;
+  }
   
   const lastRecordDate = allAnomalyTickets[allAnomalyTickets.length - 1]?.date || dayjs().format('YYYY-MM-DD');
   const maxDate = dayjs(lastRecordDate);
@@ -177,10 +182,20 @@ const dateRangeText = computed(() => {
 });
 
 const minDateLimit = computed(() => {
+  if (queryStartDate.value) {
+    return queryStartDate.value;
+  }
   const lastRecordDate = allAnomalyTickets[allAnomalyTickets.length - 1]?.date || dayjs().format('YYYY-MM-DD');
   const maxDate = dayjs(lastRecordDate);
   const days = queryTimeRange.value === '7d' ? 7 : 30;
   return maxDate.subtract(days, 'day').format('YYYY-MM-DD');
+});
+
+const maxDateLimit = computed(() => {
+  if (queryEndDate.value) {
+    return queryEndDate.value;
+  }
+  return allAnomalyTickets[allAnomalyTickets.length - 1]?.date || dayjs().format('YYYY-MM-DD');
 });
 
 // Filter anomaly ticket records
@@ -193,7 +208,7 @@ const filteredTickets = computed(() => {
     if (queryDate.value) {
       if (t.date !== queryDate.value) return false;
     } else {
-      if (t.date < minDateLimit.value) return false;
+      if (t.date < minDateLimit.value || t.date > maxDateLimit.value) return false;
     }
 
     // 3. Province filter
@@ -219,6 +234,8 @@ const goBack = () => {
     path: '/service-quality/quality-control-dashboard',
     query: {
       timeRange: queryTimeRange.value,
+      startDate: queryStartDate.value,
+      endDate: queryEndDate.value,
       province: queryProvince.value,
       station: queryStation.value,
       metric: queryMetric.value

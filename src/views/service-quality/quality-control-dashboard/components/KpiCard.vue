@@ -24,7 +24,7 @@
         {{ (rate * 100).toFixed(1) }}%
       </div>
       <div class="metric-detail">
-        <span class="label">异常数/总数:</span>
+        <span class="label">{{ meta.fractionLabel }}:</span>
         <span class="numerator text-danger-val">{{ anomalyCount.toLocaleString() }}</span>
         <span class="divider">/</span>
         <span class="denominator">{{ denominator.toLocaleString() }}</span>
