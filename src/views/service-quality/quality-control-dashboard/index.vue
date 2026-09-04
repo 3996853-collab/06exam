@@ -20,6 +20,7 @@
       v-model:granularity="granularity"
       v-model:province="province"
       v-model:station="station"
+      v-model:productType="productType"
       @change="handleFilterChange"
     />
 
@@ -99,6 +100,7 @@ const monthRange = ref<[string, string] | null>(null);
 const granularity = ref<'day' | 'month'>('day');
 const province = ref<string>('');
 const station = ref<string>('');
+const productType = ref<string>('');
 const activeKpi = ref<string>('orderAccept');
 
 // Chart view controls
@@ -123,6 +125,7 @@ onMounted(() => {
   }
   if (route.query.province) province.value = route.query.province as string;
   if (route.query.station) station.value = route.query.station as string;
+  if (route.query.productType) productType.value = route.query.productType as string;
 });
 
 // Calculate the start date limit
@@ -186,6 +189,9 @@ const filteredRecords = computed(() => {
     // Station filter
     if (station.value && r.station !== station.value) return false;
 
+    // Product Type filter
+    if (productType.value && r.productType !== productType.value) return false;
+
     return true;
   });
 });
@@ -245,8 +251,13 @@ const rankingDataList = computed(() => {
   const isPositive = activeMetricMeta.value.isPositive;
   const dimension = rankingDim.value; // 'province' | 'station'
   
-  // Filter records by date range ONLY (to compare entities under the same time range)
-  const dateRangeRecords = mockMetricRecords.filter(r => r.date >= minDateLimit.value && r.date <= maxDateLimit.value);
+  // Filter records by date range AND product type
+  const dateRangeRecords = mockMetricRecords.filter(r => {
+    const isWithinDate = r.date >= minDateLimit.value && r.date <= maxDateLimit.value;
+    if (!isWithinDate) return false;
+    if (productType.value && r.productType !== productType.value) return false;
+    return true;
+  });
   
   // Group metrics by name of province/station
   const entityMap: Record<string, { numerator: number; denominator: number }> = {};
@@ -305,7 +316,8 @@ const navigateToDetail = (metricKey: string) => {
       startDate: customDateRange.value ? customDateRange.value[0] : '',
       endDate: customDateRange.value ? customDateRange.value[1] : '',
       province: province.value,
-      station: station.value
+      station: station.value,
+      productType: productType.value
     }
   });
 };
@@ -322,6 +334,7 @@ const handleChartClick = (data: { date: string; seriesName: string; value: any }
       endDate: customDateRange.value ? customDateRange.value[1] : '',
       province: province.value,
       station: station.value,
+      productType: productType.value,
       date: data.date
     }
   });

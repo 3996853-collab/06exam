@@ -117,6 +117,38 @@
             <!-- 文本展示区，支持 HTML 渲染 -->
             <div class="message-text" v-html="message.text"></div>
 
+            <!-- 智能订阅卡片提示 (非阻断式) -->
+            <div 
+              v-if="message.suggestSubscription && !message.subscriptionClosed" 
+              class="smart-subscription-card animate-fade-in-down"
+              :class="{ 'animate-fade-out-up': message.isClosing }"
+            >
+              <div class="card-left">
+                <el-icon class="bell-icon"><Notification /></el-icon>
+              </div>
+              <div class="card-center">
+                <div class="card-title">发现您在关注【{{ message.timeKeyword }}】【{{ message.businessKeyword }}】动态</div>
+                <div class="card-desc">系统检测到该查询具有高频监控价值，建议开启定时预警任务，数据将自动投递至企业微信/钉钉。</div>
+              </div>
+              <div class="card-right">
+                <el-button 
+                  type="primary" 
+                  size="small" 
+                  class="btn-configure"
+                  @click="handleConfigureCard(message)"
+                >
+                  一键配置监控
+                </el-button>
+                <el-button 
+                  link 
+                  class="btn-close"
+                  @click="handleCloseCard(message)"
+                >
+                  <el-icon><Close /></el-icon>
+                </el-button>
+              </div>
+            </div>
+
             <!-- 数据明细表格（如果是追问返回的数据） -->
             <div v-if="message.tableData" class="message-table-box">
               <el-table :data="message.tableData" border size="small" style="width: 100%">
@@ -151,6 +183,13 @@
         </div>
       </div>
       
+      <!-- 底部悬浮反馈组件（位于输入框上方） -->
+      <FeedbackFloatingBar
+        v-if="selectedConversation !== null && currentConversation?.completed"
+        :query-id="feedbackQueryId"
+        @feedback-submit="handleFeedbackSubmit"
+      />
+
       <!-- 输入区域 -->
       <div v-if="selectedConversation !== null" class="chat-input-area">
         <!-- 快捷追问推荐（回流状态下展示） -->
@@ -414,6 +453,8 @@
         </div>
       </template>
     </el-drawer>
+
+
   </div>
 </template>
 
@@ -421,9 +462,11 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { checkSubscriptionIntent, extractKeywords } from '@/utils/IntentRecognizer'
+import FeedbackFloatingBar from '@/components/FeedbackFloatingBar.vue'
 import { 
   Notification, ArrowRight, Checked, Warning, User, Plus, 
-  Cpu, Position, Platform, Opportunity, ChatDotRound, Check 
+  Cpu, Position, Platform, Opportunity, ChatDotRound, Check, Close
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -502,9 +545,9 @@ const progressList = ref([])
 
 // 推荐问题
 const recommendedQuestions = ref([
-  '昨日华东大区冷链干线的准点率是多少？是否触发预警？',
-  '近7天货量趋势如何',
-  '哪些网点发生超时罚款异常'
+  '今天最新开单货量异常，请定时发送给我',
+  '每天早上帮我统计哪些网点有温度异常',
+  '昨日华东大区冷链干线的准点率是多少？是否触发预警？'
 ])
 
 // 新对话对话框
@@ -520,6 +563,22 @@ const currentConversation = computed(() => {
 
 // 滚动容器引用
 const chatScrollContainer = ref(null)
+
+// 底部悬浮反馈组件：当前查询 ID
+const feedbackQueryId = computed(() => {
+  if (!currentConversation.value) return ''
+  return `query_${currentConversation.value.id}_${Date.now()}`
+})
+
+// 底部悬浮反馈组件：处理反馈提交
+const handleFeedbackSubmit = (data) => {
+  console.log('[反馈组件] 用户提交反馈：', data)
+  if (data.isApproved) {
+    ElMessage.success('感谢您的认可！')
+  } else {
+    ElMessage.info('已收到您的反馈，我们会持续优化。')
+  }
+}
 
 // ----------------------------------------------------
 // Deep Link 跳转回流逻辑
@@ -632,6 +691,7 @@ const handleModeChange = () => {
 }
 
 // 发送消息
+// 发送消息
 const sendMessage = () => {
   if (inputMessage.value.trim() === '') return
   
@@ -688,6 +748,65 @@ const sendMessage = () => {
   }
 }
 
+// 提取命中的关键词，预填订阅 Drawer
+const openSubscriptionDrawerWithKeywords = (queryText, keywords) => {
+  // 根据提取的关键词，自动解析频率
+  let frequency = 'daily'
+  if (queryText.includes('每星期') || queryText.includes('每周') || queryText.includes('周一') || queryText.includes('星期')) {
+    frequency = 'weekly'
+  } else if (queryText.includes('每个月') || queryText.includes('每月')) {
+    frequency = 'monthly'
+  }
+  
+  // 提取具体的推送时间
+  let pushTime = '08:30'
+  if (queryText.includes('晚上')) {
+    pushTime = '20:30'
+  } else if (queryText.includes('早上') || queryText.includes('上午')) {
+    pushTime = '08:30'
+  } else if (queryText.includes('下午')) {
+    pushTime = '14:30'
+  }
+  
+  // 订阅任务名称
+  const primaryBusiness = keywords.business.split('、')[0] || '物流指标'
+  const primaryTime = keywords.time.split('、')[0] || '定期'
+  const defaultName = `订阅-${primaryTime}${primaryBusiness}`
+
+  subForm.value = {
+    task_name: defaultName,
+    frequency: frequency,
+    pushTime: pushTime,
+    recipients: [
+      { name: '我 (创建者)', phone: 'self' }
+    ],
+    triggerMode: 'all',
+    conditions: [
+      { logical: 'AND', field: 'ontime_rate', op: '<', value: '95%' }
+    ]
+  }
+
+  recipientPhoneInput.value = ''
+  subDrawerVisible.value = true
+}
+
+// 智能订阅提示卡片配置回调
+const handleConfigureCard = (message) => {
+  openSubscriptionDrawerWithKeywords(message.text || '', { 
+    time: message.timeKeyword, 
+    business: message.businessKeyword 
+  })
+}
+
+// 智能订阅提示卡片关闭回调（带细腻淡出动画）
+const handleCloseCard = (message) => {
+  message.isClosing = true
+  setTimeout(() => {
+    message.subscriptionClosed = true
+  }, 300)
+}
+
+
 // 模拟自动回复（支持追问分支）
 const respondToMessage = (query, conversationIndex) => {
   let replyText = ""
@@ -715,13 +834,28 @@ const respondToMessage = (query, conversationIndex) => {
     replyText = `💡 针对您的问题 "${query}"，已成功调用底层对应业务经验 SKILL。相关数据运行稳定，各项准点率与健康度指标良好。`
   }
 
+  // 检测是否触发订阅意图建议
+  const hasSubIntent = checkSubscriptionIntent(query)
+  let timeKeyword = ""
+  let businessKeyword = ""
+  if (hasSubIntent) {
+    const keywords = extractKeywords(query)
+    timeKeyword = keywords.time
+    businessKeyword = keywords.business
+  }
+
   conversationList.value[conversationIndex].messages.push({
     type: 'ai',
     sender: 'AI',
     text: replyText,
     time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
     tableData: tableData,
-    tableCols: tableCols
+    tableCols: tableCols,
+    suggestSubscription: hasSubIntent,
+    timeKeyword: timeKeyword,
+    businessKeyword: businessKeyword,
+    subscriptionClosed: false,
+    isClosing: false
   })
 
   // 更新追问推荐按钮
@@ -729,6 +863,25 @@ const respondToMessage = (query, conversationIndex) => {
   conversationList.value[conversationIndex].completed = true
   
   scrollToBottom()
+
+  // 如果触发了订阅意图，等回答完毕后再弹出提醒
+  if (hasSubIntent) {
+    setTimeout(() => {
+      ElMessageBox.confirm(
+        `系统检测到您在关注时效词汇【${timeKeyword}】和核心指标【${businessKeyword}】。是否立即为此查询配置自动订阅，以便定时推送到钉钉？`,
+        '💡 智能问数订阅建议',
+        {
+          confirmButtonText: '开启订阅',
+          cancelButtonText: '暂不需要',
+          type: 'info'
+        }
+      ).then(() => {
+        openSubscriptionDrawerWithKeywords(query, { time: timeKeyword, business: businessKeyword })
+      }).catch(() => {
+        // 用户取消或关闭，无动作，仍保留页面内卡片
+      })
+    }, 600)
+  }
 }
 
 // 模拟思考模式
@@ -1631,5 +1784,127 @@ const saveSubscription = () => {
       height: 180px;
     }
   }
+}
+
+// 智能订阅提醒卡片
+.smart-subscription-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background-color: #f0f7ff; // 柔和蓝色背景
+  border: 1px solid #d0e7ff;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease-out;
+
+  &.animate-fade-in-down {
+    animation: fadeInDown 0.35s ease-out forwards;
+  }
+
+  &.animate-fade-out-up {
+    animation: fadeOutUp 0.3s ease-out forwards;
+  }
+
+  .card-left {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background-color: #e0f0ff;
+    border-radius: 50%;
+    color: #0076fe;
+    flex-shrink: 0;
+
+    .bell-icon {
+      font-size: 18px;
+      animation: bellRing 3s ease-in-out infinite;
+    }
+  }
+
+  .card-center {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 2px;
+    }
+
+    .card-desc {
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.4;
+    }
+  }
+
+  .card-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+
+    .btn-configure {
+      background-color: #0076fe;
+      border-color: #0076fe;
+      color: #fff;
+      font-weight: 500;
+      font-size: 11px;
+      padding: 6px 12px;
+      height: auto;
+
+      &:hover {
+        background-color: #005ecb;
+        border-color: #005ecb;
+      }
+    }
+
+    .btn-close {
+      color: #94a3b8;
+      padding: 4px;
+      font-size: 16px;
+      
+      &:hover {
+        color: #64748b;
+        background-color: rgba(0, 0, 0, 0.05);
+        border-radius: 4px;
+      }
+    }
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOutUp {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
+  }
+}
+
+@keyframes bellRing {
+  0%, 100% { transform: rotate(0); }
+  5%, 15%, 25% { transform: rotate(8deg); }
+  10%, 20%, 30% { transform: rotate(-8deg); }
+  35% { transform: rotate(0); }
 }
 </style>

@@ -60,6 +60,23 @@
     </div>
 
     <div class="filter-right">
+      <!-- 产品类型筛选 -->
+      <div class="filter-item">
+        <span class="filter-label">产品类型</span>
+        <el-select
+          v-model="localProductType"
+          placeholder="全部产品类型"
+          clearable
+          size="default"
+          style="width: 150px"
+          class="select-mobile"
+          @change="emitFilters"
+        >
+          <el-option label="零担小件" value="零担小件" />
+          <el-option label="冷链快递" value="冷链快递" />
+        </el-select>
+      </div>
+
       <!-- 省区筛选 -->
       <div class="filter-item">
         <span class="filter-label">省区</span>
@@ -108,6 +125,7 @@ const props = defineProps<{
   granularity: 'day' | 'month';
   province: string;
   station: string;
+  productType: string;
 }>();
 
 const emit = defineEmits<{
@@ -117,6 +135,7 @@ const emit = defineEmits<{
   (e: 'update:granularity', val: 'day' | 'month'): void;
   (e: 'update:province', val: string): void;
   (e: 'update:station', val: string): void;
+  (e: 'update:productType', val: string): void;
   (e: 'change'): void;
 }>();
 
@@ -127,6 +146,7 @@ const localMonthRange = ref<[string, string] | null>(props.monthRange);
 const localGranularity = ref<'day' | 'month'>(props.granularity);
 const localProvince = ref(props.province);
 const localStation = ref(props.station);
+const localProductType = ref(props.productType);
 
 // Constant Options
 const headquarters = HEADQUARTERS;
@@ -147,6 +167,7 @@ watch(() => props.monthRange, (v) => { localMonthRange.value = v; });
 watch(() => props.granularity, (v) => { localGranularity.value = v; });
 watch(() => props.province, (v) => { localProvince.value = v; });
 watch(() => props.station, (v) => { localStation.value = v; });
+watch(() => props.productType, (v) => { localProductType.value = v; });
 
 // Handle preset time range (day mode)
 const handleTimeRangeChange = () => {
@@ -181,6 +202,7 @@ const emitFilters = () => {
   emit('update:monthRange', localMonthRange.value);
   emit('update:province', localProvince.value);
   emit('update:station', localStation.value);
+  emit('update:productType', localProductType.value);
   emit('change');
 };
 </script>

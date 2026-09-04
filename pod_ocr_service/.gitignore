@@ -1,0 +1,17 @@
+# Python & Virtual Env
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Sensitive Environment Variables
+.env
+
+# Local Storage Uploads & Databases
+storage_uploads/
+*.db
+*.sqlite3

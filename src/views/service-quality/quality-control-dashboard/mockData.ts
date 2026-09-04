@@ -18,7 +18,8 @@ const generateMetricValueAndTickets = (
   isPositive: boolean,
   dateStr: string,
   province: string,
-  station: string
+  station: string,
+  productType?: string
 ): MetricValue => {
   const denominator = Math.floor(randomRange(50, 150));
   
@@ -54,7 +55,8 @@ const generateMetricValueAndTickets = (
       expectedTime: expectedTime.format('YYYY-MM-DD HH:mm:ss'),
       actualTime: metricKey === 'orderAccept' && Math.random() > 0.85 ? '超时未接单' : actualTime,
       metricKey,
-      date: dateStr
+      date: dateStr,
+      productType
     });
   }
 
@@ -99,23 +101,28 @@ export const generateMockData = (): DailyMetricRecord[] => {
         const baseRepeatComplaint = 0.04 - provinceFactor - stationFactor; // Lower is better
         const baseArbitration = 0.015 - provinceFactor - stationFactor;    // Lower is better
 
-        records.push({
-          date: dateStr,
-          province,
-          station,
-          
-          // 履约域
-          orderAccept: generateMetricValueAndTickets('orderAccept', baseOrderAccept, 50, 150, true, dateStr, province, station),
-          pickup: generateMetricValueAndTickets('pickup', basePickup, 50, 150, true, dateStr, province, station),
-          delivery: generateMetricValueAndTickets('delivery', baseDelivery, 50, 150, true, dateStr, province, station),
-          dispatch: generateMetricValueAndTickets('dispatch', baseDispatch, 50, 150, true, dateStr, province, station),
-          podReturn: generateMetricValueAndTickets('podReturn', 40, 120, true, dateStr, province, station),
+        ['零担小件', '冷链快递'].forEach(pType => {
+          const pTypeFactor = pType === '零担小件' ? 0.015 : -0.02;
 
-          // 客诉域
-          firstResponse: generateMetricValueAndTickets('firstResponse', baseFirstResponse, 5, 30, true, dateStr, province, station),
-          completion: generateMetricValueAndTickets('completion', baseCompletion, 5, 30, true, dateStr, province, station),
-          repeatComplaint: generateMetricValueAndTickets('repeatComplaint', baseRepeatComplaint, 2, 20, false, dateStr, province, station),
-          arbitration: generateMetricValueAndTickets('arbitration', baseArbitration, 1, 15, false, dateStr, province, station)
+          records.push({
+            date: dateStr,
+            province,
+            station,
+            productType: pType,
+            
+            // 履约域
+            orderAccept: generateMetricValueAndTickets('orderAccept', baseOrderAccept + pTypeFactor, 25, 75, true, dateStr, province, station, pType),
+            pickup: generateMetricValueAndTickets('pickup', basePickup + pTypeFactor, 25, 75, true, dateStr, province, station, pType),
+            delivery: generateMetricValueAndTickets('delivery', baseDelivery + pTypeFactor, 25, 75, true, dateStr, province, station, pType),
+            dispatch: generateMetricValueAndTickets('dispatch', baseDispatch + pTypeFactor, 25, 75, true, dateStr, province, station, pType),
+            podReturn: generateMetricValueAndTickets('podReturn', basePodReturn + pTypeFactor, 20, 60, true, dateStr, province, station, pType),
+
+            // 客诉域
+            firstResponse: generateMetricValueAndTickets('firstResponse', baseFirstResponse + pTypeFactor, 2, 15, true, dateStr, province, station, pType),
+            completion: generateMetricValueAndTickets('completion', baseCompletion + pTypeFactor, 2, 15, true, dateStr, province, station, pType),
+            repeatComplaint: generateMetricValueAndTickets('repeatComplaint', baseRepeatComplaint - pTypeFactor, 1, 10, false, dateStr, province, station, pType),
+            arbitration: generateMetricValueAndTickets('arbitration', baseArbitration - pTypeFactor, 0, 5, false, dateStr, province, station, pType)
+          });
         });
       });
     });

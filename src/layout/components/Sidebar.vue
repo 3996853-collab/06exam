@@ -236,6 +236,10 @@ const handleMegaItemClick = (itemName) => {
       router.push('/rule-config/template')
     } else if (itemName === '物流策略预警平台') {
       router.push('/logistics-warning/dashboard')
+    } else if (itemName === '配送运营看板') {
+      router.push('/cold-chain-dashboard')
+    } else if (itemName === '回单识别') {
+      router.push('/receipt-ocr')
     } else {
       // For other mock items, just show a message or do nothing
       console.log('Clicked mega menu item:', itemName)
@@ -248,7 +252,7 @@ const megaMenuData = [
   [
     {
       title: '业务功能',
-      items: ['录单', '批量录单', '录单antigravity']
+      items: ['录单', '批量录单', '录单antigravity', '回单识别']
     },
     {
       title: '服务质量',
@@ -264,7 +268,7 @@ const megaMenuData = [
     },
     {
       title: '预警配置',
-      items: ['规则配置中心', '规则构建器', '智能配置助手', '模板中心', '物流策略预警平台']
+      items: ['规则配置中心', '规则构建器', '智能配置助手', '模板中心', '物流策略预警平台', '配送运营看板']
     }
   ]
 ]

@@ -10,6 +10,7 @@ export interface DailyMetricRecord {
   date: string;       // 日期 YYYY-MM-DD
   province: string;   // 省区 (江苏、浙江、上海、北京、河北、山东、广东、福建)
   station: string;    // 网点
+  productType?: string; // 产品类型 (零担小件、冷链快递)
   
   // 履约域 (正向指标)
   orderAccept: MetricValue;   // 订单接单及时率
@@ -34,6 +35,7 @@ export interface AnomalyTicket {
   actualTime: string;   // 实际处理时间
   metricKey: string;    // 关联指标 key
   date: string;         // 日期 YYYY-MM-DD
+  productType?: string; // 产品类型
 }
 
 // Metric type metadata definition

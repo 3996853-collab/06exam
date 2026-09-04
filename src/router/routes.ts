@@ -276,5 +276,29 @@ export const constantRoutes = [
         meta: { title: '时效与流转监控', icon: 'Odometer' }
       }
     ]
+  },
+  {
+    path: '/cold-chain-dashboard',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        name: 'ColdChainDashboard',
+        component: () => import('@/views/cold-chain-dashboard/index.vue'),
+        meta: { title: '配送运营看板', icon: 'DataBoard' }
+      }
+    ]
+  },
+  {
+    path: '/receipt-ocr',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        name: 'ReceiptOcr',
+        component: () => import('@/views/receipt-ocr/index.vue'),
+        meta: { title: '回单识别', icon: 'Camera' }
+      }
+    ]
   }
 ]

@@ -36,6 +36,10 @@
             <el-tag type="primary" size="small">{{ activeMetricMeta?.name }}</el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="时间范围">{{ dateRangeText }}</el-descriptions-item>
+          <el-descriptions-item label="产品类型">
+            <el-tag v-if="queryProductType" type="success" size="small">{{ queryProductType }}</el-tag>
+            <span v-else>全部产品</span>
+          </el-descriptions-item>
           <el-descriptions-item label="视图层级">
             <el-tag
               :type="viewMode === 'province' ? 'info' : viewMode === 'station' ? 'warning' : 'danger'"
@@ -287,6 +291,7 @@ const queryStartDate = computed(() => (route.query.startDate as string) || '');
 const queryEndDate = computed(() => (route.query.endDate as string) || '');
 const queryProvince = computed(() => (route.query.province as string) || '');
 const queryStation = computed(() => (route.query.station as string) || '');
+const queryProductType = computed(() => (route.query.productType as string) || '');
 const queryDate = computed(() => (route.query.date as string) || '');
 
 // Determine the current view mode:
@@ -332,6 +337,7 @@ const filteredMetricRecords = computed(() => {
   return mockMetricRecords.filter(r => {
     if (r.date < minDateLimit.value || r.date > maxDateLimit.value) return false;
     if (queryProvince.value && r.province !== queryProvince.value) return false;
+    if (queryProductType.value && r.productType !== queryProductType.value) return false;
     return true;
   });
 });
@@ -414,6 +420,7 @@ const filteredTickets = computed(() => {
     }
     if (queryProvince.value && t.province !== queryProvince.value) return false;
     if (queryStation.value && t.station !== queryStation.value) return false;
+    if (queryProductType.value && t.productType !== queryProductType.value) return false;
     return true;
   });
 });
@@ -441,6 +448,7 @@ const goBack = () => {
         endDate: queryEndDate.value,
         province: queryProvince.value,
         station: '',
+        productType: queryProductType.value,
         date: queryDate.value
       }
     });
@@ -454,7 +462,8 @@ const goBack = () => {
         startDate: queryStartDate.value,
         endDate: queryEndDate.value,
         province: '',
-        station: ''
+        station: '',
+        productType: queryProductType.value
       }
     });
   } else {
@@ -467,7 +476,8 @@ const goBack = () => {
         endDate: queryEndDate.value,
         province: queryProvince.value,
         station: queryStation.value,
-        metric: queryMetric.value
+        metric: queryMetric.value,
+        productType: queryProductType.value
       }
     });
   }
@@ -485,7 +495,8 @@ const handleAggRowClick = (row: any) => {
         startDate: queryStartDate.value,
         endDate: queryEndDate.value,
         province: row.province,
-        station: ''
+        station: '',
+        productType: queryProductType.value
       }
     });
   } else if (viewMode.value === 'station') {
@@ -499,6 +510,7 @@ const handleAggRowClick = (row: any) => {
         endDate: queryEndDate.value,
         province: queryProvince.value,
         station: row.station,
+        productType: queryProductType.value,
         date: queryDate.value
       }
     });
