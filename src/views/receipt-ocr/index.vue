@@ -175,7 +175,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="fileName" label="文件名" min-width="160" show-overflow-tooltip />
-        <el-table-column prop="deliveryNo" label="出库单号/送货单号" min-width="180">
+        <el-table-column prop="deliveryNo" label="单号(右下二维码/出库单号)" min-width="190">
           <template #default="scope">
             <span v-if="scope.row.deliveryNo" class="delivery-no">{{ scope.row.deliveryNo }}</span>
             <span v-else class="text-muted">未识别</span>
@@ -252,10 +252,10 @@
         <el-form-item label="文件名">
           <span style="color: #606266; word-break: break-all;">{{ manualForm.fileName }}</span>
         </el-form-item>
-        <el-form-item label="出库单号/单号" required>
+        <el-form-item label="单号(右下二维码)" required>
           <el-input
             v-model="manualForm.deliveryNo"
-            placeholder="请输入出库单号 (如 CK202609040001)"
+            placeholder="请输入右下二维码或出库单号 (如 CK202609040001)"
             clearable
           />
         </el-form-item>
@@ -303,7 +303,7 @@
         <div v-if="previewResult" class="preview-info">
           <el-descriptions :column="1" border size="small">
             <el-descriptions-item label="文件名">{{ previewResult.fileName }}</el-descriptions-item>
-            <el-descriptions-item label="出库单号/送货单号">
+            <el-descriptions-item label="单号(右下二维码)">
               <span v-if="previewResult.deliveryNo" class="delivery-no">{{ previewResult.deliveryNo }}</span>
               <span v-else class="text-muted">未识别</span>
             </el-descriptions-item>
