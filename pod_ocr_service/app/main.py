@@ -54,7 +54,8 @@ def health_check():
         "status": "ok",
         "app_name": settings.APP_NAME,
         "env": settings.APP_ENV,
-        "vlm_model": settings.VLM_MODEL_NAME,
+        "ocr_engine": settings.OCR_ENGINE,
+        "vlm_model": settings.VLM_MODEL_NAME if settings.OCR_ENGINE == "vlm" else "RapidOCR (ONNX)",
         "storage_type": settings.STORAGE_TYPE
     }
 

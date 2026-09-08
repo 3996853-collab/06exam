@@ -14,6 +14,7 @@ from app.schemas import SingleProcessResult, BatchProcessSummary
 from app.services.image_processor import ImageProcessor
 from app.services.storage import get_storage_client, BaseStorage
 from app.services.vlm_client import VlmClient
+from app.services.rapid_ocr_client import RapidOcrClient
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -21,20 +22,27 @@ settings = get_settings()
 SUPPORTED_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 
 
+def get_ocr_engine_client():
+    """根据配置动态获取 OCR 识别客户端"""
+    if settings.OCR_ENGINE == "rapidocr":
+        return RapidOcrClient()
+    return VlmClient()
+
+
 class PodProcessor:
     """
     送货单回单核心业务编排器:
     - 图像格式清洗与 ZIP 自动解压缩
-    - ThreadPool 并发调用多模态 VLM
+    - 支持 RapidOCR 本地引擎 / VLM 大模型多模态
     - 存证上传与 URL 获取
     - 状态机判断（1-成功，3-待处理）
     - 事务写入 MySQL 表 t_receipt_ocr_record
     """
 
-    def __init__(self, db: Session, storage: BaseStorage = None, vlm_client: VlmClient = None):
+    def __init__(self, db: Session, storage: BaseStorage = None, ocr_client = None, vlm_client = None):
         self.db = db
         self.storage = storage or get_storage_client()
-        self.vlm_client = vlm_client or VlmClient()
+        self.ocr_client = ocr_client or vlm_client or get_ocr_engine_client()
 
     def process_single_image(
         self,
@@ -56,8 +64,11 @@ class PodProcessor:
 
         image_url, oss_key = self.storage.upload(processed_bytes, file_key, content_type=mime_type)
 
-        # 3. 调用多模态 VLM 结构化提取
-        ocr_result = self.vlm_client.extract_from_base64(base64_str, mime_type=mime_type)
+        # 3. 调用 OCR 客户端结构化提取 (RapidOCR / VLM)
+        if hasattr(self.ocr_client, "extract_from_bytes"):
+            ocr_result = self.ocr_client.extract_from_bytes(processed_bytes)
+        else:
+            ocr_result = self.ocr_client.extract_from_base64(base64_str, mime_type=mime_type)
 
         # 4. 业务状态机判定
         # 规则：delivery_no 和 sign_date 均成功提取为 1(识别成功)；任一缺失为 3(待处理)
@@ -167,7 +178,7 @@ class PodProcessor:
             thread_db = SessionLocal()
 
         try:
-            worker_processor = PodProcessor(thread_db, self.storage, self.vlm_client)
+            worker_processor = PodProcessor(thread_db, self.storage, self.ocr_client)
             return worker_processor.process_single_image(image_bytes, filename, batch_id, operator)
         finally:
             thread_db.close()

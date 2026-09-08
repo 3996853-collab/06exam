@@ -140,10 +140,34 @@ def test_pod_processor_flow_and_status_logic():
     print("[PASS] test_pod_processor_flow_and_status_logic")
 
 
+def test_rapid_ocr_engine():
+    """测试 RapidOCR 本地引擎提取单号和水印时间"""
+    from PIL import ImageDraw
+    from app.services.rapid_ocr_client import RapidOcrClient
+
+    img = Image.new("RGB", (600, 400), color=(255, 255, 255))
+    d = ImageDraw.Draw(img)
+    d.text((50, 50), "出库单号: CK20260908888", fill=(0, 0, 0))
+    d.text((50, 320), "打卡时间: 2026-09-08 16:45:00", fill=(0, 0, 0))
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    raw = buf.getvalue()
+
+    client = RapidOcrClient()
+    res = client.extract_from_bytes(raw)
+    assert res.delivery_no == "CK20260908888"
+    assert res.sign_date == date(2026, 9, 8)
+    assert res.sign_time == datetime(2026, 9, 8, 16, 45, 0)
+    print("[PASS] test_rapid_ocr_engine")
+
+
 if __name__ == "__main__":
     print("--- Start POD OCR Core Automated Testing ---")
     test_image_processor()
     test_vlm_parsing_clean()
     test_pod_processor_flow_and_status_logic()
+    test_rapid_ocr_engine()
     print("All tests passed successfully!")
+
 

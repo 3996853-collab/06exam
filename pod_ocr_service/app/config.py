@@ -21,7 +21,10 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
 
-    # VLM API (OpenAI Compatible, e.g., DashScope qwen-vl-max)
+    # OCR 识别引擎: rapidocr (本地 PP-OCRv4 离线引擎) 或 vlm (大语言多模态模型 API)
+    OCR_ENGINE: Literal["rapidocr", "vlm"] = "rapidocr"
+
+    # VLM API (当 OCR_ENGINE=vlm 时使用)
     VLM_API_KEY: str = "mock-api-key"
     VLM_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     VLM_MODEL_NAME: str = "qwen-vl-max"
