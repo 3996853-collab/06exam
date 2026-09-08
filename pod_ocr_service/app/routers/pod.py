@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import datetime
 from fastapi import APIRouter, Depends, File, UploadFile, Query, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -9,7 +10,9 @@ from app.schemas import (
     SingleProcessResult,
     BatchProcessSummary,
     ReceiptRecordOut,
-    ManualRecordUpdateRequest
+    ManualRecordUpdateRequest,
+    BatchRecordSubmitRequest,
+    BatchRecordSubmitResponse
 )
 from app.services.pod_processor import PodProcessor
 
@@ -149,3 +152,82 @@ def manual_update_record(
     db.commit()
     db.refresh(record)
     return record
+
+
+@router.post(
+    "/submit",
+    response_model=BatchRecordSubmitResponse,
+    summary="校验并批量存储回单信息到数据库"
+)
+def submit_records(
+    payload: BatchRecordSubmitRequest,
+    db: Session = Depends(get_db)
+):
+    if not payload.items:
+        raise HTTPException(status_code=400, detail="提交的数据列表为空")
+
+    # 1. 严格校验送货单号、签收日期与签收时间是否完整
+    invalid_rows = []
+    for idx, item in enumerate(payload.items):
+        missing_fields = []
+        if not item.delivery_no or not item.delivery_no.strip():
+            missing_fields.append("送货单号")
+        if not item.sign_date:
+            missing_fields.append("签收日期")
+        if not item.sign_time:
+            missing_fields.append("签收时间")
+
+        if missing_fields:
+            item_name = item.raw_file_name or f"第{idx + 1}条数据"
+            invalid_rows.append(f"{item_name} (缺少: {', '.join(missing_fields)})")
+
+    if invalid_rows:
+        raise HTTPException(
+            status_code=422,
+            detail=f"提交失败，以下数据信息不完整，请先补录：{'; '.join(invalid_rows)}"
+        )
+
+    # 2. 保存到数据库
+    saved_ids = []
+    batch_id = f"SUBMIT_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+    for item in payload.items:
+        record = None
+        if item.record_id:
+            record = db.query(ReceiptOcrRecord).filter(ReceiptOcrRecord.id == item.record_id).first()
+
+        if record:
+            # 更新已有记录
+            record.delivery_no = item.delivery_no.strip()
+            record.sign_date = item.sign_date
+            record.sign_time = item.sign_time
+            record.recognition_status = RecognitionStatus.SUCCESS.value
+            record.created_by = f"{record.created_by}|submit_by_{payload.operator}"
+        else:
+            # 创建新记录
+            record = ReceiptOcrRecord(
+                delivery_no=item.delivery_no.strip(),
+                sign_date=item.sign_date,
+                sign_time=item.sign_time,
+                image_url=item.image_url or "",
+                image_oss_key=item.image_oss_key or "",
+                raw_file_name=item.raw_file_name or "",
+                batch_id=batch_id,
+                recognition_status=RecognitionStatus.SUCCESS.value,
+                created_by=payload.operator
+            )
+            db.add(record)
+
+        db.flush()
+        saved_ids.append(record.id)
+
+    db.commit()
+
+    return BatchRecordSubmitResponse(
+        success=True,
+        total_count=len(payload.items),
+        saved_count=len(saved_ids),
+        record_ids=saved_ids,
+        message=f"成功校验并存储 {len(saved_ids)} 条回单信息到数据库！"
+    )
+

@@ -19,6 +19,16 @@
           一键识别
         </el-button>
         <el-button
+          type="success"
+          size="small"
+          :loading="isSubmittingDb"
+          :disabled="results.length === 0"
+          @click="handleSubmitToDatabase"
+        >
+          <el-icon v-if="!isSubmittingDb"><CircleCheckFilled /></el-icon>
+          提交入库
+        </el-button>
+        <el-button
           size="small"
           :disabled="results.length === 0"
           @click="handleExport"
@@ -85,59 +95,147 @@
       </el-card>
     </div>
 
-    <!-- Upload Area -->
-    <el-card shadow="never" class="upload-card">
+    <!-- Side-by-Side Upload & Preview Area -->
+    <el-card shadow="never" class="upload-split-card">
       <template #header>
         <div class="card-header">
           <span class="card-title">
             <el-icon><Picture /></el-icon>
-            上传回单照片
+            回单照片上传与预览
           </span>
-          <span class="card-tip">支持 JPG、PNG 格式，可批量上传多张水印相机拍摄的送货单回单照片</span>
+          <span class="card-tip">支持 JPG、PNG 格式，左侧点击或拖拽上传，右侧即时查看所选回单与识别详情</span>
         </div>
       </template>
-      <el-upload
-        ref="uploadRef"
-        class="receipt-uploader"
-        drag
-        multiple
-        :auto-upload="false"
-        :show-file-list="false"
-        accept=".jpg,.jpeg,.png"
-        :on-change="handleFileChange"
-      >
-        <div class="upload-content">
-          <el-icon class="upload-icon-main"><UploadFilled /></el-icon>
-          <div class="upload-text">将文件拖到此处，或 <em>点击上传</em></div>
-          <div class="upload-hint">支持 jpg / jpeg / png 格式的回单照片</div>
-        </div>
-      </el-upload>
 
-      <!-- Thumbnail Grid -->
-      <div v-if="uploadedFiles.length > 0" class="thumbnail-grid">
-        <div
-          v-for="(file, index) in uploadedFiles"
-          :key="file.uid"
-          class="thumbnail-item"
-          :class="{ 'is-processing': file.status === 'processing' }"
-        >
-          <el-image
-            :src="file.url"
-            fit="cover"
-            class="thumbnail-img"
-            @click="handlePreview(file)"
-          />
-          <div v-if="file.status === 'processing'" class="thumbnail-overlay">
-            <el-icon class="spin-icon"><Loading /></el-icon>
+      <div class="split-container">
+        <!-- Left: Compact Upload & Thumbnail List -->
+        <div class="split-left">
+          <el-upload
+            ref="uploadRef"
+            class="compact-uploader"
+            drag
+            multiple
+            :auto-upload="false"
+            :show-file-list="false"
+            accept=".jpg,.jpeg,.png"
+            :on-change="handleFileChange"
+          >
+            <div class="compact-upload-content">
+              <el-icon class="compact-upload-icon"><UploadFilled /></el-icon>
+              <div class="compact-upload-text">点击或拖拽回单到此处上传</div>
+              <div class="compact-upload-hint">支持 JPG / PNG，单张不超过 10MB</div>
+            </div>
+          </el-upload>
+
+          <!-- Uploaded file queue/thumbnail list -->
+          <div class="file-list-header" v-if="uploadedFiles.length > 0">
+            <span class="list-title">已选回单列表 ({{ uploadedFiles.length }})</span>
+            <span class="list-hint">点击可切换右侧预览</span>
           </div>
-          <div v-if="file.status === 'success'" class="thumbnail-badge success">
-            <el-icon><Select /></el-icon>
+          <div v-if="uploadedFiles.length > 0" class="compact-thumbnail-grid">
+            <div
+              v-for="(file, index) in uploadedFiles"
+              :key="file.uid"
+              class="compact-thumbnail-item"
+              :class="{
+                'is-active': activePreviewFile?.uid === file.uid,
+                'is-processing': file.status === 'processing'
+              }"
+              @click="handleSelectPreviewFile(file)"
+            >
+              <el-image
+                :src="file.url"
+                fit="cover"
+                class="thumb-img"
+              />
+              <div v-if="file.status === 'processing'" class="thumb-overlay">
+                <el-icon class="spin-icon"><Loading /></el-icon>
+              </div>
+              <div v-if="file.status === 'success'" class="thumb-badge success" title="识别成功">
+                <el-icon><Select /></el-icon>
+              </div>
+              <div v-else-if="file.status === 'manual'" class="thumb-badge manual" title="已人工补录">
+                <el-icon><EditPen /></el-icon>
+              </div>
+              <div v-else-if="file.status === 'error'" class="thumb-badge error" title="识别失败/待补录">
+                <el-icon><CloseBold /></el-icon>
+              </div>
+              <div class="thumb-title">{{ file.name }}</div>
+              <el-icon class="thumb-delete" title="删除" @click.stop="handleRemoveFile(index)"><Close /></el-icon>
+            </div>
           </div>
-          <div v-if="file.status === 'error'" class="thumbnail-badge error">
-            <el-icon><CloseBold /></el-icon>
+          <div v-else class="empty-upload-tip">
+            暂无上传回单照片，请点击或拖入照片开始
           </div>
-          <div class="thumbnail-name">{{ file.name }}</div>
-          <el-icon class="thumbnail-delete" @click.stop="handleRemoveFile(index)"><Close /></el-icon>
+        </div>
+
+        <!-- Right: Real-time Photo & OCR Detail Preview -->
+        <div class="split-right">
+          <div class="preview-header">
+            <span class="preview-title">
+              <el-icon><View /></el-icon>
+              照片预览与核对
+            </span>
+            <div class="preview-quick-actions" v-if="activePreviewResult">
+              <el-button
+                link
+                type="warning"
+                size="small"
+                @click="handleOpenManualEdit(activePreviewResult, getResultIndex(activePreviewResult))"
+              >
+                <el-icon><EditPen /></el-icon> 快捷补录
+              </el-button>
+            </div>
+          </div>
+
+          <div v-if="activePreviewFile" class="preview-body">
+            <div class="preview-image-wrapper">
+              <el-image
+                :src="activePreviewFile.url"
+                fit="contain"
+                class="main-preview-img"
+                :preview-src-list="[activePreviewFile.url]"
+                preview-teleported
+              />
+            </div>
+            <div class="preview-meta-card">
+              <div class="meta-row">
+                <span class="meta-label">文件名：</span>
+                <span class="meta-value">{{ activePreviewFile.name }}</span>
+              </div>
+              <div class="meta-row" v-if="activePreviewResult">
+                <span class="meta-label">单号(右下二维码)：</span>
+                <span class="meta-value delivery-tag" v-if="activePreviewResult.deliveryNo">
+                  {{ activePreviewResult.deliveryNo }}
+                </span>
+                <el-tag v-else type="danger" size="small">未识别出单号</el-tag>
+              </div>
+              <div class="meta-row" v-if="activePreviewResult">
+                <span class="meta-label">签收日期：</span>
+                <span class="meta-value" v-if="activePreviewResult.signDate">
+                  {{ activePreviewResult.signDate }}
+                </span>
+                <el-tag v-else type="danger" size="small">缺失日期</el-tag>
+              </div>
+              <div class="meta-row" v-if="activePreviewResult">
+                <span class="meta-label">签收打卡时间：</span>
+                <span class="meta-value" v-if="activePreviewResult.signTime">
+                  {{ activePreviewResult.signTime }}
+                </span>
+                <el-tag v-else type="danger" size="small">缺失时间</el-tag>
+              </div>
+              <div class="meta-row" v-if="activePreviewResult?.errorMessage">
+                <span class="meta-label">状态提示：</span>
+                <span class="error-inline">{{ activePreviewResult.errorMessage }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="preview-placeholder">
+            <el-icon :size="56" class="placeholder-icon"><Picture /></el-icon>
+            <div class="placeholder-text">暂无选中预览</div>
+            <div class="placeholder-subtext">在左侧上传照片后，即可在此处实时查看大图及识别字段</div>
+          </div>
         </div>
       </div>
     </el-card>
@@ -150,9 +248,21 @@
             <el-icon><Document /></el-icon>
             识别结果
           </span>
-          <span class="result-summary" v-if="results.length > 0">
-            共 {{ results.length }} 条结果
-          </span>
+          <div class="card-header-right">
+            <span class="result-summary" v-if="results.length > 0">
+              共 {{ results.length }} 条结果
+            </span>
+            <el-button
+              type="success"
+              size="small"
+              :loading="isSubmittingDb"
+              :disabled="results.length === 0"
+              @click="handleSubmitToDatabase"
+            >
+              <el-icon v-if="!isSubmittingDb"><CircleCheckFilled /></el-icon>
+              提交校验入库
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -372,6 +482,8 @@ const uploadRef = ref()
 const uploadedFiles = ref<UploadedFile[]>([])
 const results = ref<OcrResult[]>([])
 const isBatchProcessing = ref(false)
+const isSubmittingDb = ref(false)
+const activePreviewFile = ref<UploadedFile | null>(null)
 const previewVisible = ref(false)
 const previewUrl = ref('')
 const previewResult = ref<OcrResult | null>(null)
@@ -387,6 +499,21 @@ const manualForm = ref({
   signTime: '',
   recordId: null as number | null
 })
+
+// 当前选中预览文件对应的 OCR 识别结果
+const activePreviewResult = computed(() => {
+  if (!activePreviewFile.value) return null
+  return results.value.find(r => r.fileUid === activePreviewFile.value?.uid) || null
+})
+
+function getResultIndex(res: OcrResult | null): number {
+  if (!res) return -1
+  return results.value.findIndex(r => r.fileUid === res.fileUid)
+}
+
+function handleSelectPreviewFile(file: UploadedFile) {
+  activePreviewFile.value = file
+}
 
 // ---------- Computed ----------
 const recognizedCount = computed(() =>
@@ -563,23 +690,35 @@ function handleFileChange(file: UploadFile) {
   }
 
   const url = URL.createObjectURL(file.raw)
-  uploadedFiles.value.push({
+  const newUploaded: UploadedFile = {
     uid: file.uid as number,
     name: file.name,
     url,
     raw: file.raw,
     status: 'pending'
-  })
+  }
+  uploadedFiles.value.push(newUploaded)
+
+  // 默认选中第一张或最新上传的照片作为右侧预览
+  if (!activePreviewFile.value) {
+    activePreviewFile.value = newUploaded
+  }
 }
 
 function handleRemoveFile(index: number) {
   const file = uploadedFiles.value[index]
   URL.revokeObjectURL(file.url)
   uploadedFiles.value.splice(index, 1)
+
   // Also remove from results
   const resultIndex = results.value.findIndex(r => r.fileUid === file.uid)
   if (resultIndex !== -1) {
     results.value.splice(resultIndex, 1)
+  }
+
+  // 若删除的是当前预览，切换到新的第一个文件或置空
+  if (activePreviewFile.value?.uid === file.uid) {
+    activePreviewFile.value = uploadedFiles.value.length > 0 ? uploadedFiles.value[0] : null
   }
 }
 
@@ -704,7 +843,133 @@ async function handleClearAll() {
   uploadedFiles.value.forEach(f => URL.revokeObjectURL(f.url))
   uploadedFiles.value = []
   results.value = []
+  activePreviewFile.value = null
   ElMessage.success('已清空')
+}
+
+// ---------- 提交校验与入库存储 ----------
+async function handleSubmitToDatabase() {
+  if (results.value.length === 0) {
+    ElMessage.warning('当前暂无任何识别或补录结果')
+    return
+  }
+
+  // 1. 严格校验送货单号、签收日期与签收时间是否完整
+  const incompleteItems: Array<{ index: number; name: string; missing: string[] }> = []
+
+  results.value.forEach((r, idx) => {
+    const missing: string[] = []
+    if (!r.deliveryNo || !r.deliveryNo.trim()) {
+      missing.push('送货单号')
+    }
+    if (!r.signDate) {
+      missing.push('签收日期')
+    }
+    if (!r.signTime) {
+      missing.push('签收时间')
+    }
+
+    if (missing.length > 0) {
+      incompleteItems.push({
+        index: idx + 1,
+        name: r.fileName,
+        missing
+      })
+    }
+  })
+
+  // 若存在不完整信息，阻断提交并弹出明确补录提醒
+  if (incompleteItems.length > 0) {
+    const detailListHtml = incompleteItems
+      .slice(0, 5)
+      .map(
+        item =>
+          `<li style="margin-bottom: 4px;"><strong>第 ${item.index} 条 (${item.name})</strong>：缺少 <span style="color: #f56c6c; font-weight: bold;">${item.missing.join('、')}</span></li>`
+      )
+      .join('')
+
+    const moreText = incompleteItems.length > 5 ? `<div style="margin-top: 4px; color: #909399;">...等共 ${incompleteItems.length} 条数据不完整</div>` : ''
+
+    ElMessageBox.alert(
+      `<div style="line-height: 1.6;">
+        <p style="margin-bottom: 8px; color: #e6a23c; font-weight: bold;">发现 ${incompleteItems.length} 条回单信息不完整，无法直接入库：</p>
+        <ul style="padding-left: 20px; font-size: 13px; color: #606266;">
+          ${detailListHtml}
+        </ul>
+        ${moreText}
+        <p style="margin-top: 10px; color: #00b8c4;">请点击表格对应行右侧的「补录」按钮补充完整（送货单号、签收日期、签收时间）后再行提交！</p>
+      </div>`,
+      '信息不完整提醒',
+      {
+        dangerouslyUseHTMLString: true,
+        confirmButtonText: '我知道了',
+        type: 'warning'
+      }
+    )
+    return
+  }
+
+  // 2. 确认全部完整，提交存储到数据库
+  try {
+    await ElMessageBox.confirm(
+      `共检测到 ${results.value.length} 条完整回单数据（单号、日期、时间均已齐全），确定校验无误并立即存储到数据库中吗？`,
+      '确认提交入库',
+      {
+        confirmButtonText: '确认存储',
+        cancelButtonText: '取消',
+        type: 'success'
+      }
+    )
+  } catch {
+    return
+  }
+
+  isSubmittingDb.value = true
+  try {
+    const payload = {
+      items: results.value.map(r => ({
+        record_id: r.recordId || null,
+        delivery_no: r.deliveryNo!.trim(),
+        sign_date: r.signDate,
+        sign_time: r.signTime,
+        raw_file_name: r.fileName,
+        image_url: r.thumbnailUrl || '',
+        confidence: r.confidence || 1.0
+      })),
+      operator: 'operator_ui'
+    }
+
+    const response = await fetch('/api/v1/pod/submit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+
+    if (!response.ok) {
+      const err = await response.json()
+      throw new Error(err.detail || '提交入库接口异常')
+    }
+
+    const resData = await response.json()
+
+    // 更新各条记录的状态与回填 record_id
+    if (resData.record_ids && Array.isArray(resData.record_ids)) {
+      resData.record_ids.forEach((id: number, idx: number) => {
+        if (results.value[idx]) {
+          results.value[idx].recordId = id
+          results.value[idx].status = 'success'
+        }
+      })
+    }
+
+    ElMessage.success(resData.message || `成功存储 ${results.value.length} 条回单信息到数据库！`)
+  } catch (error: any) {
+    ElMessage.error(`入库存储失败: ${error.message || '网络异常'}`)
+  } finally {
+    isSubmittingDb.value = false
+  }
 }
 
 function getConfidenceColor(confidence: number): string {
@@ -787,8 +1052,8 @@ function getConfidenceColor(confidence: number): string {
   }
 }
 
-// Upload Card
-.upload-card {
+// Side-by-Side Upload & Preview Card
+.upload-split-card {
   margin-bottom: 16px;
 
   .card-header {
@@ -811,154 +1076,354 @@ function getConfidenceColor(confidence: number): string {
     }
   }
 
-  .receipt-uploader {
-    :deep(.el-upload) {
+  .split-container {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+    min-height: 290px;
+
+    @media (max-width: 992px) {
+      flex-direction: column;
+    }
+  }
+
+  // Left column: compact upload + thumbnails
+  .split-left {
+    flex: 0 0 380px;
+    width: 380px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #ebeef5;
+    padding-right: 20px;
+
+    @media (max-width: 992px) {
+      flex: 1 1 auto;
       width: 100%;
+      border-right: none;
+      border-bottom: 1px solid #ebeef5;
+      padding-right: 0;
+      padding-bottom: 16px;
     }
 
-    :deep(.el-upload-dragger) {
-      width: 100%;
-      height: 160px;
-      border: 2px dashed #dcdfe6;
-      border-radius: 8px;
-      background: #fafbfc;
-      transition: all 0.3s;
+    .compact-uploader {
+      :deep(.el-upload) {
+        width: 100%;
+      }
 
-      &:hover {
-        border-color: #00b8c4;
-        background: #f0fafa;
+      :deep(.el-upload-dragger) {
+        width: 100%;
+        height: 100px;
+        padding: 8px 12px;
+        border: 2px dashed #dcdfe6;
+        border-radius: 8px;
+        background: #fafbfc;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        &:hover {
+          border-color: #00b8c4;
+          background: #f0fafa;
+        }
+      }
+
+      .compact-upload-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+
+        .compact-upload-icon {
+          font-size: 28px;
+          color: #00b8c4;
+          margin-bottom: 4px;
+        }
+
+        .compact-upload-text {
+          font-size: 13px;
+          font-weight: 500;
+          color: #404245;
+        }
+
+        .compact-upload-hint {
+          font-size: 11px;
+          color: #909399;
+          margin-top: 2px;
+        }
       }
     }
 
-    .upload-content {
+    .file-list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      margin-bottom: 8px;
+
+      .list-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #303133;
+      }
+
+      .list-hint {
+        font-size: 11px;
+        color: #909399;
+      }
+    }
+
+    .compact-thumbnail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      max-height: 180px;
+      overflow-y: auto;
+      padding-right: 4px;
+
+      .compact-thumbnail-item {
+        position: relative;
+        border-radius: 6px;
+        overflow: hidden;
+        border: 2px solid #ebeef5;
+        background: #fff;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+          border-color: #00b8c4;
+          box-shadow: 0 2px 8px rgba(0, 190, 190, 0.2);
+
+          .thumb-delete {
+            opacity: 1;
+          }
+        }
+
+        &.is-active {
+          border-color: #00b8c4;
+          box-shadow: 0 0 0 1px #00b8c4, 0 2px 8px rgba(0, 190, 190, 0.25);
+        }
+
+        &.is-processing {
+          border-color: #e6a23c;
+        }
+
+        .thumb-img {
+          width: 100%;
+          height: 60px;
+          display: block;
+        }
+
+        .thumb-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 60px;
+          background: rgba(0, 0, 0, 0.4);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #fff;
+          font-size: 18px;
+        }
+
+        .thumb-badge {
+          position: absolute;
+          top: 3px;
+          right: 3px;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 10px;
+          color: #fff;
+
+          &.success { background: #67c23a; }
+          &.manual { background: #00b8c4; }
+          &.error { background: #f56c6c; }
+        }
+
+        .thumb-title {
+          font-size: 10px;
+          color: #606266;
+          padding: 2px 4px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          background: #fafafa;
+          line-height: 1.3;
+        }
+
+        .thumb-delete {
+          position: absolute;
+          top: 3px;
+          left: 3px;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: rgba(0, 0, 0, 0.5);
+          color: #fff;
+          font-size: 9px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          transition: opacity 0.2s;
+          cursor: pointer;
+
+          &:hover {
+            background: #f56c6c;
+          }
+        }
+      }
+    }
+
+    .empty-upload-tip {
+      margin-top: 14px;
+      padding: 16px;
+      text-align: center;
+      font-size: 12px;
+      color: #909399;
+      background: #f8fafc;
+      border-radius: 6px;
+      border: 1px dashed #e4e7ed;
+    }
+  }
+
+  // Right column: Large preview + details
+  .split-right {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+
+      .preview-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #303133;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+    }
+
+    .preview-body {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      background: #f8fafc;
+      border: 1px solid #ebeef5;
+      border-radius: 8px;
+      padding: 12px;
+      flex: 1;
+
+      @media (max-width: 768px) {
+        flex-direction: column;
+      }
+
+      .preview-image-wrapper {
+        flex: 0 0 240px;
+        width: 240px;
+        height: 220px;
+        background: #fff;
+        border-radius: 6px;
+        border: 1px solid #e4e7ed;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .main-preview-img {
+          max-width: 100%;
+          max-height: 100%;
+          cursor: pointer;
+        }
+      }
+
+      .preview-meta-card {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background: #fff;
+        border-radius: 6px;
+        padding: 12px 14px;
+        border: 1px solid #e4e7ed;
+
+        .meta-row {
+          display: flex;
+          align-items: center;
+          font-size: 13px;
+          line-height: 1.5;
+
+          .meta-label {
+            width: 130px;
+            color: #606266;
+            font-weight: 500;
+            flex-shrink: 0;
+          }
+
+          .meta-value {
+            color: #303133;
+            font-weight: 600;
+            word-break: break-all;
+
+            &.delivery-tag {
+              font-family: 'Courier New', Courier, monospace;
+              color: #00b8c4;
+              font-size: 14px;
+              background: #e6f7ff;
+              padding: 2px 6px;
+              border-radius: 4px;
+              border: 1px solid #b5f5ec;
+            }
+          }
+
+          .error-inline {
+            color: #f56c6c;
+            font-size: 12px;
+          }
+        }
+      }
+    }
+
+    .preview-placeholder {
+      flex: 1;
+      min-height: 220px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100%;
+      background: #fcfcfc;
+      border: 1px dashed #dcdfe6;
+      border-radius: 8px;
+      padding: 24px;
 
-      .upload-icon-main {
-        font-size: 48px;
-        color: #c0c4cc;
-        margin-bottom: 8px;
+      .placeholder-icon {
+        color: #dcdfe6;
+        margin-bottom: 10px;
       }
 
-      .upload-text {
+      .placeholder-text {
         font-size: 14px;
-        color: #606266;
-
-        em {
-          color: #00b8c4;
-          font-style: normal;
-        }
-      }
-
-      .upload-hint {
-        font-size: 12px;
+        font-weight: 600;
         color: #909399;
-        margin-top: 4px;
+        margin-bottom: 4px;
       }
-    }
-  }
-}
 
-// Thumbnail Grid
-.thumbnail-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #f0f2f5;
-
-  .thumbnail-item {
-    position: relative;
-    width: 100px;
-    border-radius: 6px;
-    overflow: hidden;
-    border: 2px solid #ebeef5;
-    transition: all 0.3s;
-    cursor: pointer;
-
-    &:hover {
-      border-color: #00b8c4;
-      box-shadow: 0 2px 8px rgba(0, 190, 190, 0.15);
-
-      .thumbnail-delete {
-        opacity: 1;
-      }
-    }
-
-    &.is-processing {
-      border-color: #e6a23c;
-    }
-
-    .thumbnail-img {
-      width: 100px;
-      height: 80px;
-      display: block;
-    }
-
-    .thumbnail-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100px;
-      height: 80px;
-      background: rgba(0, 0, 0, 0.4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      font-size: 24px;
-    }
-
-    .thumbnail-badge {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      color: #fff;
-
-      &.success { background: #67c23a; }
-      &.error { background: #f56c6c; }
-    }
-
-    .thumbnail-name {
-      font-size: 11px;
-      color: #606266;
-      padding: 4px 6px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      background: #fff;
-    }
-
-    .thumbnail-delete {
-      position: absolute;
-      top: 4px;
-      left: 4px;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: rgba(0, 0, 0, 0.5);
-      color: #fff;
-      font-size: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      transition: opacity 0.2s;
-      cursor: pointer;
-
-      &:hover {
-        background: #f56c6c;
+      .placeholder-subtext {
+        font-size: 12px;
+        color: #c0c4cc;
+        text-align: center;
       }
     }
   }
@@ -987,6 +1452,12 @@ function getConfidenceColor(confidence: number): string {
       display: flex;
       align-items: center;
       gap: 6px;
+    }
+
+    .card-header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
     .result-summary {

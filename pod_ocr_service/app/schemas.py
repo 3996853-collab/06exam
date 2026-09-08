@@ -85,3 +85,31 @@ class ManualRecordUpdateRequest(BaseModel):
     sign_date: Optional[date] = Field(default=None, description="修正后的签收日期 YYYY-MM-DD")
     sign_time: Optional[datetime] = Field(default=None, description="修正后的完整签收时间")
     operator: str = Field(default="admin", description="补录操作人工号/姓名")
+
+
+class RecordSubmitItem(BaseModel):
+    """提交入库单条记录"""
+    record_id: Optional[int] = Field(default=None, description="已存在记录ID(若有则更新)")
+    delivery_no: str = Field(..., min_length=1, max_length=64, description="送货单号(必填)")
+    sign_date: date = Field(..., description="签收日期(必填，YYYY-MM-DD)")
+    sign_time: Optional[datetime] = Field(default=None, description="签收时间(必填或由日期推导)")
+    raw_file_name: Optional[str] = Field(default="", description="原始文件名")
+    image_url: Optional[str] = Field(default="", description="图片URL")
+    image_oss_key: Optional[str] = Field(default="", description="图片存储Key")
+    confidence: Optional[float] = Field(default=1.0, description="置信度")
+
+
+class BatchRecordSubmitRequest(BaseModel):
+    """批量提交入库请求"""
+    items: List[RecordSubmitItem] = Field(..., description="待提交入库记录列表")
+    operator: str = Field(default="operator_ui", description="操作人")
+
+
+class BatchRecordSubmitResponse(BaseModel):
+    """批量提交入库结果响应"""
+    success: bool
+    total_count: int
+    saved_count: int
+    record_ids: List[int]
+    message: str
+
