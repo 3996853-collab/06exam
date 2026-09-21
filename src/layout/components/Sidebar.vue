@@ -218,8 +218,10 @@ const handleMegaItemClick = (itemName) => {
       router.push('/data-analysis/province-flow-dashboard')
     } else if (itemName === '智能对话') {
       router.push('/smart-chat')
-    } else if (itemName === '数据看板') {
-      router.push('/data-analysis/data-dashboard')
+    } else if (itemName === '移动看板' || itemName === '数据看板') {
+      router.push('/mobile-dashboard')
+    } else if (itemName === '看板配置管理') {
+      router.push('/dashboard-config')
     } else if (itemName === 'SKILL权限管理') {
       router.push('/system-management/skill-permission-management')
     } else if (itemName === '问数对话') {
@@ -260,11 +262,11 @@ const megaMenuData = [
     },
     {
       title: '数据分析',
-      items: ['省份流向仪表盘', '智能对话', '数据看板', '问数对话', '问数订阅']
+      items: ['省份流向仪表盘', '智能对话', '移动看板', '问数对话', '问数订阅']
     },
     {
       title: '系统管理',
-      items: ['SKILL权限管理']
+      items: ['SKILL权限管理', '看板配置管理']
     },
     {
       title: '预警配置',

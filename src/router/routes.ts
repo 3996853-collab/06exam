@@ -171,8 +171,8 @@ export const constantRoutes = [
       {
         path: 'data-dashboard',
         name: 'DataDashboard',
-        component: () => import('@/views/data-analysis/data-dashboard/index.vue'),
-        meta: { title: '数据看板', icon: 'DataBoard' }
+        component: () => import('@/views/mobile-dashboard/index.vue'),
+        meta: { title: '移动看板', icon: 'Cellphone' }
       },
       {
         path: 'smart-subscription',
@@ -208,6 +208,12 @@ export const constantRoutes = [
         name: 'SkillPermissionManagement',
         component: () => import('@/views/skill-permission-management/index.vue'),
         meta: { title: 'SKILL权限管理', icon: 'Lock' }
+      },
+      {
+        path: 'dashboard-config',
+        name: 'SystemDashboardConfig',
+        component: () => import('@/views/dashboard-config/index.vue'),
+        meta: { title: '看板配置管理', icon: 'Setting' }
       }
     ]
   },
@@ -298,6 +304,30 @@ export const constantRoutes = [
         name: 'ReceiptOcr',
         component: () => import('@/views/receipt-ocr/index.vue'),
         meta: { title: '回单识别', icon: 'Camera' }
+      }
+    ]
+  },
+  {
+    path: '/mobile-dashboard',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        name: 'MobileDashboard',
+        component: () => import('@/views/mobile-dashboard/index.vue'),
+        meta: { title: '移动看板', icon: 'Cellphone' }
+      }
+    ]
+  },
+  {
+    path: '/dashboard-config',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        name: 'DashboardConfig',
+        component: () => import('@/views/dashboard-config/index.vue'),
+        meta: { title: '看板配置管理', icon: 'Setting' }
       }
     ]
   }
