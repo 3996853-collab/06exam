@@ -90,21 +90,7 @@
           </div>
         </div>
 
-        <!-- 4. 当前分类快速二级 Pill 导航 -->
-        <div class="sub-nav-pill-bar">
-          <div
-            v-for="sub in currentSubCategoryTabs"
-            :key="sub.key"
-            class="pill-tab"
-            :class="{ 'active': activeSubTab === sub.key }"
-            @click="activeSubTab = sub.key"
-          >
-            <span>{{ sub.name }}</span>
-            <span class="count-badge">{{ getMetricsBySub(sub.key).length }}</span>
-          </div>
-        </div>
-
-        <!-- 5. 可滚动卡片内容区 (Cards Scroll Body) -->
+        <!-- 4. 可滚动卡片内容区 (Cards Scroll Body) -->
         <div class="cards-scroll-body" ref="scrollContainer">
           <!-- 业务数据分类 -->
           <template v-if="activeMainTab === 'business'">
@@ -356,24 +342,116 @@
 
               <!-- 分类卡片 -->
               <div class="outlet-cards-grid">
-                <div class="outlet-detail-card">
-                  <div class="card-icon delivery"><Van /></div>
+                <!-- 交货网点数 -->
+                <div
+                  class="outlet-detail-card clickable"
+                  :class="{ 'is-active': expandedOutletType === 'delivery' }"
+                  @click="toggleOutletExpand('delivery')"
+                >
+                  <div class="card-top-action">
+                    <div class="card-icon delivery"><Van /></div>
+                    <div class="drill-tip" :class="{ 'rotated': expandedOutletType === 'delivery' }">
+                      <span>{{ expandedOutletType === 'delivery' ? '收起明细' : '下钻展开' }}</span>
+                      <el-icon><ArrowDown /></el-icon>
+                    </div>
+                  </div>
                   <div class="card-info">
                     <div class="name">交货网点数</div>
                     <div class="val">1,120 <span class="u">家</span></div>
-                    <div class="desc">具备冷链末端自提与定时派送能力</div>
+                    <div class="desc">截单时间 · 规划交货时间</div>
                   </div>
                 </div>
 
-                <div class="outlet-detail-card">
-                  <div class="card-icon pickup"><Box /></div>
+                <!-- 提货网点数 -->
+                <div
+                  class="outlet-detail-card clickable"
+                  :class="{ 'is-active': expandedOutletType === 'pickup' }"
+                  @click="toggleOutletExpand('pickup')"
+                >
+                  <div class="card-top-action">
+                    <div class="card-icon pickup"><Box /></div>
+                    <div class="drill-tip" :class="{ 'rotated': expandedOutletType === 'pickup' }">
+                      <span>{{ expandedOutletType === 'pickup' ? '收起明细' : '下钻展开' }}</span>
+                      <el-icon><ArrowDown /></el-icon>
+                    </div>
+                  </div>
                   <div class="card-info">
                     <div class="name">提货网点数</div>
                     <div class="val">560 <span class="u">家</span></div>
-                    <div class="desc">覆盖冷链特色产地仓、生鲜前置集配站</div>
+                    <div class="desc">提货截单 · 打卡 · 规划发车</div>
                   </div>
                 </div>
               </div>
+
+              <!-- 下钻展开区域：交货网点明细 -->
+              <transition name="drilldown">
+                <div v-if="expandedOutletType === 'delivery'" class="outlet-drilldown-box delivery-box">
+                  <div class="drilldown-header">
+                    <div class="dh-title">
+                      <el-icon class="text-delivery"><Van /></el-icon>
+                      <span>交货网点排期明细</span>
+                      <span class="count-tag">共 1,120 家</span>
+                    </div>
+                    <span class="close-txt" @click="expandedOutletType = null">收起</span>
+                  </div>
+
+                  <div class="outlet-item-list">
+                    <div v-for="item in deliveryOutletList" :key="item.id" class="outlet-row-card">
+                      <div class="row-top">
+                        <span class="outlet-title">{{ item.name }}</span>
+                        <el-tag size="small" type="primary" effect="plain">{{ item.tag }}</el-tag>
+                      </div>
+                      <div class="schedule-grid delivery-schedule">
+                        <div class="schedule-item">
+                          <span class="lbl"><el-icon><Timer /></el-icon> 截单时间</span>
+                          <span class="val highlight-orange">{{ item.cutoffTime }}</span>
+                        </div>
+                        <div class="schedule-item">
+                          <span class="lbl"><el-icon><Clock /></el-icon> 规划交货时间</span>
+                          <span class="val highlight-cyan">{{ item.plannedDeliveryTime }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </transition>
+
+              <!-- 下钻展开区域：提货网点明细 -->
+              <transition name="drilldown">
+                <div v-if="expandedOutletType === 'pickup'" class="outlet-drilldown-box pickup-box">
+                  <div class="drilldown-header">
+                    <div class="dh-title">
+                      <el-icon class="text-pickup"><Box /></el-icon>
+                      <span>提货网点时效明细</span>
+                      <span class="count-tag">共 560 家</span>
+                    </div>
+                    <span class="close-txt" @click="expandedOutletType = null">收起</span>
+                  </div>
+
+                  <div class="outlet-item-list">
+                    <div v-for="item in pickupOutletList" :key="item.id" class="outlet-row-card">
+                      <div class="row-top">
+                        <span class="outlet-title">{{ item.name }}</span>
+                        <el-tag size="small" type="warning" effect="plain">{{ item.tag }}</el-tag>
+                      </div>
+                      <div class="schedule-grid pickup-schedule">
+                        <div class="schedule-item">
+                          <span class="lbl"><el-icon><Timer /></el-icon> 提货截单时间</span>
+                          <span class="val highlight-orange">{{ item.pickupCutoffTime }}</span>
+                        </div>
+                        <div class="schedule-item">
+                          <span class="lbl"><el-icon><User /></el-icon> 规划打卡时间</span>
+                          <span class="val highlight-blue">{{ item.plannedClockInTime }}</span>
+                        </div>
+                        <div class="schedule-item">
+                          <span class="lbl"><el-icon><Promotion /></el-icon> 规划发车时间</span>
+                          <span class="val highlight-green">{{ item.plannedDepartureTime }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </transition>
             </div>
           </template>
         </div>
@@ -419,7 +497,11 @@ import {
   Location,
   Connection,
   MostlyCloudy,
-  Compass
+  Compass,
+  Timer,
+  Clock,
+  User,
+  Promotion
 } from '@element-plus/icons-vue'
 import {
   useMetricConfigStore,
@@ -496,6 +578,127 @@ const currentSubCategoryTitle = computed(() => {
   const allTabs = [...businessSubTabs, ...basicSubTabs]
   return allTabs.find(t => t.key === activeSubTab.value)?.name || '指标明细'
 })
+
+// 控制服务网点下钻展开状态 ('delivery' | 'pickup' | null)
+const expandedOutletType = ref<'delivery' | 'pickup' | null>('delivery')
+
+const toggleOutletExpand = (type: 'delivery' | 'pickup') => {
+  if (expandedOutletType.value === type) {
+    expandedOutletType.value = null
+  } else {
+    expandedOutletType.value = type
+  }
+}
+
+// 交货网点下钻数据源 (交货网点，截单时间，规划交货时间)
+const deliveryOutletList = [
+  {
+    id: 'd1',
+    name: '上海青浦华新网点',
+    code: 'SH-QP-001',
+    cutoffTime: '17:00',
+    plannedDeliveryTime: '次日 08:30',
+    tag: '一级干线直达'
+  },
+  {
+    id: 'd2',
+    name: '苏州昆山花桥网点',
+    code: 'SZ-KS-008',
+    cutoffTime: '17:30',
+    plannedDeliveryTime: '次日 09:00',
+    tag: '优先直送'
+  },
+  {
+    id: 'd3',
+    name: '杭州萧山钱江网点',
+    code: 'HZ-XS-012',
+    cutoffTime: '16:45',
+    plannedDeliveryTime: '次日 08:45',
+    tag: '冷链专线'
+  },
+  {
+    id: 'd4',
+    name: '无锡新吴梅村网点',
+    code: 'WX-XW-005',
+    cutoffTime: '17:15',
+    plannedDeliveryTime: '次日 09:15',
+    tag: '标准配送'
+  },
+  {
+    id: 'd5',
+    name: '嘉兴秀洲高新网点',
+    code: 'JX-XZ-003',
+    cutoffTime: '18:00',
+    plannedDeliveryTime: '次日 09:30',
+    tag: '定时达'
+  },
+  {
+    id: 'd6',
+    name: '南京江宁百家湖网点',
+    code: 'NJ-JN-015',
+    cutoffTime: '16:30',
+    plannedDeliveryTime: '次日 09:00',
+    tag: '重点保供'
+  }
+]
+
+// 提货网点下钻数据源 (提货网点，提货截单时间，规划司机打卡时间，规划发车时间)
+const pickupOutletList = [
+  {
+    id: 'p1',
+    name: '嘉兴南湖产地直采仓',
+    code: 'PU-JX-001',
+    pickupCutoffTime: '14:30',
+    plannedClockInTime: '15:00',
+    plannedDepartureTime: '15:30',
+    tag: '源头产地仓'
+  },
+  {
+    id: 'p2',
+    name: '湖州德清生鲜集配仓',
+    code: 'PU-HZ-004',
+    pickupCutoffTime: '14:00',
+    plannedClockInTime: '14:30',
+    plannedDepartureTime: '15:00',
+    tag: '特色冷鲜仓'
+  },
+  {
+    id: 'p3',
+    name: '苏州阳澄湖特色前置仓',
+    code: 'PU-SZ-007',
+    pickupCutoffTime: '15:00',
+    plannedClockInTime: '15:30',
+    plannedDepartureTime: '16:00',
+    tag: '时令保鲜专仓'
+  },
+  {
+    id: 'p4',
+    name: '上海金山现代农业直采站',
+    code: 'PU-SH-002',
+    pickupCutoffTime: '15:30',
+    plannedClockInTime: '16:00',
+    plannedDepartureTime: '16:30',
+    tag: '果蔬直发中心'
+  },
+  {
+    id: 'p5',
+    name: '南通海门禽蛋集约中心',
+    code: 'PU-NT-009',
+    pickupCutoffTime: '14:15',
+    plannedClockInTime: '14:45',
+    plannedDepartureTime: '15:15',
+    tag: '恒温专用站'
+  },
+  {
+    id: 'p6',
+    name: '舟山定海海鲜直配中心',
+    code: 'PU-ZS-003',
+    pickupCutoffTime: '13:30',
+    plannedClockInTime: '14:00',
+    plannedDepartureTime: '14:30',
+    tag: '极速冷冻直发'
+  }
+]
 
 // 过滤指定子分类下的指标列表
 const getMetricsBySub = (subKey: string) => {
@@ -870,57 +1073,7 @@ onMounted(() => {
       }
     }
 
-    // 4. 快速 Pill 二级导航
-    .sub-nav-pill-bar {
-      display: flex;
-      padding: 10px 14px;
-      gap: 8px;
-      background: #f1f5f9;
-      border-bottom: 1px solid #e2e8f0;
-      overflow-x: auto;
-      flex-shrink: 0;
-
-      &::-webkit-scrollbar {
-        display: none;
-      }
-
-      .pill-tab {
-        padding: 5px 12px;
-        border-radius: 16px;
-        font-size: 12px;
-        font-weight: 500;
-        background: #fff;
-        color: #475569;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        white-space: nowrap;
-        border: 1px solid #e2e8f0;
-        transition: all 0.2s;
-
-        .count-badge {
-          font-size: 10px;
-          background: #f1f5f9;
-          color: #64748b;
-          padding: 1px 5px;
-          border-radius: 8px;
-        }
-
-        &.active {
-          background: #00bebe;
-          color: #fff;
-          border-color: #00bebe;
-
-          .count-badge {
-            background: rgba(255, 255, 255, 0.25);
-            color: #fff;
-          }
-        }
-      }
-    }
-
-    // 5. 滚动内容区
+    // 4. 滚动内容区
     .cards-scroll-body {
       flex: 1;
       overflow-y: auto;
@@ -1395,12 +1548,49 @@ onMounted(() => {
           .outlet-detail-card {
             background: #fff;
             border-radius: 14px;
-            padding: 14px;
+            padding: 13px 14px;
             border: 1px solid #f1f5f9;
             display: flex;
             flex-direction: column;
             gap: 8px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+            cursor: pointer;
+            transition: all 0.22s ease;
+
+            &.clickable {
+              &:hover {
+                border-color: #cbd5e1;
+                transform: translateY(-1px);
+              }
+
+              &.is-active {
+                border-color: #00bebe;
+                box-shadow: 0 4px 14px rgba(0, 190, 190, 0.12);
+              }
+            }
+
+            .card-top-action {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+
+              .drill-tip {
+                display: flex;
+                align-items: center;
+                gap: 2px;
+                font-size: 10px;
+                color: #00bebe;
+                font-weight: 600;
+
+                .el-icon {
+                  transition: transform 0.22s ease;
+                }
+
+                &.rotated .el-icon {
+                  transform: rotate(180deg);
+                }
+              }
+            }
 
             .card-icon {
               width: 32px;
@@ -1425,6 +1615,7 @@ onMounted(() => {
               .name {
                 font-size: 12px;
                 color: #64748b;
+                font-weight: 500;
               }
               .val {
                 font-size: 20px;
@@ -1442,6 +1633,129 @@ onMounted(() => {
                 font-size: 10px;
                 color: #94a3b8;
                 line-height: 1.3;
+              }
+            }
+          }
+        }
+
+        // 下钻面板样式
+        .outlet-drilldown-box {
+          background: #fff;
+          border-radius: 14px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+          overflow: hidden;
+          padding: 12px 14px 14px;
+
+          &.delivery-box {
+            border-top: 3px solid #0284c7;
+          }
+          &.pickup-box {
+            border-top: 3px solid #f59e0b;
+          }
+
+          .drilldown-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f1f5f9;
+            margin-bottom: 10px;
+
+            .dh-title {
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              font-size: 13px;
+              font-weight: 700;
+              color: #0f172a;
+
+              .text-delivery { color: #0284c7; font-size: 15px; }
+              .text-pickup { color: #f59e0b; font-size: 15px; }
+
+              .count-tag {
+                font-size: 10px;
+                font-weight: normal;
+                background: #f1f5f9;
+                color: #64748b;
+                padding: 1px 6px;
+                border-radius: 10px;
+              }
+            }
+
+            .close-txt {
+              font-size: 11px;
+              color: #94a3b8;
+              cursor: pointer;
+              &:hover { color: #64748b; }
+            }
+          }
+
+          .outlet-item-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 380px;
+            overflow-y: auto;
+
+            .outlet-row-card {
+              background: #f8fafc;
+              border: 1px solid #f1f5f9;
+              border-radius: 10px;
+              padding: 10px 12px;
+              display: flex;
+              flex-direction: column;
+              gap: 6px;
+
+              .row-top {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+
+                .outlet-title {
+                  font-size: 12px;
+                  font-weight: 700;
+                  color: #1e293b;
+                }
+              }
+
+              .schedule-grid {
+                display: grid;
+                gap: 6px;
+                margin-top: 2px;
+
+                &.delivery-schedule {
+                  grid-template-columns: 1fr 1fr;
+                }
+
+                &.pickup-schedule {
+                  grid-template-columns: 1fr 1fr 1fr;
+                }
+
+                .schedule-item {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 1px;
+
+                  .lbl {
+                    font-size: 10px;
+                    color: #94a3b8;
+                    display: flex;
+                    align-items: center;
+                    gap: 3px;
+                  }
+
+                  .val {
+                    font-size: 12px;
+                    font-weight: 700;
+                    font-family: 'Helvetica Neue', Arial, sans-serif;
+
+                    &.highlight-orange { color: #ea580c; }
+                    &.highlight-cyan { color: #0284c7; }
+                    &.highlight-blue { color: #2563eb; }
+                    &.highlight-green { color: #16a34a; }
+                  }
+                }
               }
             }
           }
