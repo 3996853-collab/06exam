@@ -5,19 +5,31 @@
       <div class="bar-left">
         <el-icon class="icon"><Cellphone /></el-icon>
         <span class="title">小程序移动端指标看板</span>
-        <el-tag size="small" type="success" effect="light" class="tag">T+1 跑批数据</el-tag>
+        <el-tag size="small" type="success" effect="light" class="tag">T+1 跑批数据 (出站T-2)</el-tag>
       </div>
 
       <div class="bar-right">
-        <!-- 维度切换 -->
-        <el-select v-model="selectedDimension" size="small" class="dimension-select">
-          <el-option label="全国总部大盘" value="nationwide" />
-          <el-option label="华东大区" value="east_china" />
-          <el-option label="华北大区" value="north_china" />
-          <el-option label="上海分拨中心" value="shanghai_hub" />
-        </el-select>
+        <!-- 部门机构切换 -->
+        <div class="org-selector-group">
+          <span class="lbl">查看机构:</span>
+          <el-select v-model="metricStore.currentOrgId" size="small" class="org-select" @change="onOrgChange">
+            <el-option
+              v-for="org in metricStore.orgList"
+              :key="org.id"
+              :label="org.name"
+              :value="org.id"
+            >
+              <div class="org-option-row">
+                <span>{{ org.name }}</span>
+                <el-tag size="small" :type="org.type === 'headquarter' ? 'danger' : org.type === 'hub' ? 'primary' : 'info'">
+                  {{ org.type === 'headquarter' ? '总部' : org.type === 'hub' ? '分拨' : '集配' }}
+                </el-tag>
+              </div>
+            </el-option>
+          </el-select>
+        </div>
 
-        <!-- 归档日期 -->
+        <!-- 归档日期 (默认T-1) -->
         <el-date-picker
           v-model="selectedDate"
           type="date"
@@ -34,9 +46,9 @@
           <el-radio-button label="responsive">响应式平铺</el-radio-button>
         </el-radio-group>
 
-        <!-- 进入配置管理 -->
+        <!-- 进入总部配置工具 -->
         <el-button size="small" type="primary" plain :icon="Setting" @click="goToConfig">
-          看板配置管理
+          总部配置工具
         </el-button>
       </div>
     </div>
@@ -44,7 +56,7 @@
     <!-- Main Container -->
     <div class="content-wrapper" :class="{ 'is-mobile-frame': viewMode === 'mobile' }">
       <div class="phone-shell">
-        <!-- 1. 小程序顶部状态栏 (Status Bar) -->
+        <!-- 1. 小程序顶部状态栏 -->
         <div class="phone-status-bar">
           <span class="time">{{ currentClock }}</span>
           <div class="notch-camera"></div>
@@ -54,13 +66,17 @@
           </div>
         </div>
 
-        <!-- 2. 小程序原生导航栏带微信胶囊 (Mini-Program Navbar & Capsule) -->
+        <!-- 2. 小程序原生导航栏带微信胶囊 -->
         <div class="mini-app-navbar">
           <div class="nav-title-area">
-            <span class="nav-title">移动端数据看板</span>
-            <span class="nav-subtitle">{{ selectedDimensionLabel }} · {{ selectedDate }}</span>
+            <div class="org-badge-wrap" @click="showOrgDrawer = true">
+              <span class="nav-title">{{ currentOrg.name }}</span>
+              <el-icon class="arrow"><ArrowDown /></el-icon>
+            </div>
+            <span class="nav-subtitle">
+              {{ currentOrg.region }} · 数据归档日: {{ selectedDate }} (T-1)
+            </span>
           </div>
-          <!-- 微信小程序经典胶囊按钮 -->
           <div class="wechat-capsule">
             <span class="capsule-dots">•••</span>
             <span class="capsule-divider"></span>
@@ -68,7 +84,54 @@
           </div>
         </div>
 
-        <!-- 3. 顶部 2 栏切换：业务数据 vs 基础数据 -->
+        <!-- 3. 总部机构下：顶部可搜索中心，查看对应中心情况 (需求⑤) -->
+        <div v-if="isHeadquarter" class="hq-search-bar">
+          <div class="search-input-wrapper">
+            <el-icon class="search-icon"><Search /></el-icon>
+            <input
+              v-model="centerSearchKeyword"
+              type="text"
+              placeholder="搜索分拨中心 / 集配站 (如: 广州, 京津冀, 成都)..."
+              class="mobile-search-input"
+              @focus="isSearching = true"
+            />
+            <el-icon v-if="centerSearchKeyword" class="clear-icon" @click="centerSearchKeyword = ''">
+              <CircleClose />
+            </el-icon>
+          </div>
+
+          <!-- 搜索联想下拉浮层 -->
+          <div v-if="isSearching && filteredSearchCenters.length > 0" class="search-results-dropdown">
+            <div class="res-tip">匹配到以下分拨与集配机构 (点击直达)：</div>
+            <div
+              v-for="center in filteredSearchCenters"
+              :key="center.id"
+              class="search-res-item"
+              @click="selectSearchedCenter(center)"
+            >
+              <div class="res-info">
+                <span class="res-name">{{ center.name }}</span>
+                <span class="res-reg">{{ center.region }}</span>
+              </div>
+              <el-tag size="small" :type="center.type === 'hub' ? 'primary' : 'info'">
+                {{ center.type === 'hub' ? '分拨中心' : '集配站' }}
+              </el-tag>
+            </div>
+          </div>
+        </div>
+
+        <!-- 当前非总部机构时的提示 Banner -->
+        <div v-else class="branch-view-banner">
+          <div class="bb-left">
+            <el-tag size="small" type="warning" effect="dark">分机构数据</el-tag>
+            <span class="bb-txt">当前查看：<b>{{ currentOrg.name }}</b> 独立运营指标</span>
+          </div>
+          <el-button link size="small" type="primary" @click="metricStore.currentOrgId = 'hq'">
+            返回总部视角
+          </el-button>
+        </div>
+
+        <!-- 4. 顶部 2 栏切换：业务数据 vs 基础数据 -->
         <div class="top-segmented-bar">
           <div
             class="segment-item"
@@ -90,35 +153,46 @@
           </div>
         </div>
 
-        <!-- 4. 可滚动卡片内容区 (Cards Scroll Body) -->
-        <div class="cards-scroll-body" ref="scrollContainer">
+        <!-- 5. 可滚动卡片内容区 -->
+        <div class="cards-scroll-body" ref="scrollContainer" @click="isSearching = false">
           <!-- 业务数据分类 -->
           <template v-if="activeMainTab === 'business'">
             <div class="category-header-banner">
               <div class="banner-title">
                 <span class="dot"></span>
                 <span>{{ currentSubCategoryTitle }}</span>
+                <span class="org-scope-badge">{{ isHeadquarter ? '全网汇总' : currentOrg.name }}</span>
               </div>
-              <span class="banner-sub">共 {{ currentMetricList.length }} 项监控指标 (T+1 跑批)</span>
+              <span class="banner-sub">共 {{ currentMetricList.length }} 项监控指标 (默认T-1, 出站T-2)</span>
             </div>
 
             <div v-if="currentMetricList.length === 0" class="empty-tip">
               <el-empty description="暂无该分类的指标数据" />
             </div>
 
-            <!-- 标准指标卡片瀑布流 -->
+            <!-- 标准指标卡片列表 -->
             <div
               v-for="item in currentMetricList"
               :key="item.id"
               class="metric-card"
               :class="{ 'expanded': expandedMap[item.metricKey] }"
-              @click="toggleExpand(item.metricKey)"
             >
               <!-- Card Header -->
-              <div class="card-header">
+              <div class="card-header" @click="toggleExpand(item.metricKey)">
                 <div class="metric-name-group">
                   <span class="metric-name">{{ item.displayName }}</span>
+                  <!-- 需求②: 出站及时率特别展示 T-2 归档角标 -->
                   <el-tag
+                    v-if="item.metricKey === 'outbound_timeliness_rate'"
+                    size="small"
+                    type="danger"
+                    effect="dark"
+                    class="t2-tag"
+                  >
+                    T-2 数据
+                  </el-tag>
+                  <el-tag
+                    v-else
                     size="small"
                     :type="item.trendType === 'positive' ? 'success' : 'warning'"
                     effect="plain"
@@ -127,23 +201,46 @@
                     {{ item.trendType === 'positive' ? '正向指标' : '逆向指标' }}
                   </el-tag>
                 </div>
-                <div class="expand-icon" :class="{ 'rotated': expandedMap[item.metricKey] }">
-                  <el-icon><ArrowDown /></el-icon>
+
+                <div class="header-actions">
+                  <span class="tap-hint">{{ expandedMap[item.metricKey] ? '折叠趋势' : '点击趋势' }}</span>
+                  <div class="expand-icon" :class="{ 'rotated': expandedMap[item.metricKey] }">
+                    <el-icon><ArrowDown /></el-icon>
+                  </div>
                 </div>
               </div>
 
-              <!-- Card Value Row -->
-              <div class="card-value-row">
-                <span class="main-val">{{ formatNumber(item.value ?? 0) }}</span>
-                <span v-if="item.unit" class="unit">{{ item.unit }}</span>
+              <!-- Card Value Row (需求④: 点击数值查看30天折线趋势，配置工具字体颜色生效) -->
+              <div class="card-value-row" @click="toggleExpand(item.metricKey)">
+                <div class="val-main-box">
+                  <span
+                    class="main-val"
+                    :style="{ color: getMetricValueColor(item) }"
+                  >
+                    {{ formatNumber(getScopedValue(item)) }}
+                  </span>
+                  <span v-if="item.unit" class="unit">{{ item.unit }}</span>
+                </div>
+
+                <!-- 目标值展示 (配置工具③配置的目标值) -->
+                <div v-if="item.targetValue" class="target-val-box">
+                  <span class="t-lbl">目标:</span>
+                  <span class="t-val">{{ formatNumber(getScopedTarget(item)) }}{{ item.unit }}</span>
+                  <span
+                    class="t-status"
+                    :class="isTargetAchieved(item) ? 'achieved' : 'unachieved'"
+                  >
+                    {{ isTargetAchieved(item) ? '已达标' : '未达标' }}
+                  </span>
+                </div>
               </div>
 
-              <!-- Card Bottom: 日环比 / 周同比 -->
+              <!-- Card Rates Row (日环比 / 周同比，配置工具④字体颜色生效) -->
               <div class="card-rates-row">
                 <!-- 日环比 -->
                 <div
                   class="rate-badge"
-                  :class="getRateColorClass(item.dod ?? 0, item.trendType)"
+                  :style="getRateBadgeStyle(item.dod ?? 0, item)"
                 >
                   <span class="rate-label">日环比</span>
                   <el-icon v-if="(item.dod ?? 0) > 0"><Top /></el-icon>
@@ -154,16 +251,67 @@
                 <!-- 周同比 -->
                 <div
                   class="rate-badge"
-                  :class="getRateColorClass(item.wow ?? 0, item.trendType)"
+                  :style="getRateBadgeStyle(item.wow ?? 0, item)"
                 >
                   <span class="rate-label">周同比</span>
                   <el-icon v-if="(item.wow ?? 0) > 0"><Top /></el-icon>
                   <el-icon v-else-if="(item.wow ?? 0) < 0"><Bottom /></el-icon>
                   <span class="rate-val">{{ Math.abs(item.wow ?? 0) }}%</span>
                 </div>
+
+                <!-- 需求④: 总部机构下，每项数据支持下钻到中心&集配 (例如总操作量 -> 广州, 京津冀, 成都...) -->
+                <div
+                  v-if="isHeadquarter"
+                  class="breakdown-toggle-btn"
+                  :class="{ 'active': breakdownMap[item.metricKey] }"
+                  @click.stop="toggleBreakdown(item.metricKey)"
+                >
+                  <el-icon><Histogram /></el-icon>
+                  <span>{{ breakdownMap[item.metricKey] ? '收起下钻' : '下钻分拨&集配' }}</span>
+                </div>
               </div>
 
-              <!-- ECharts 趋势图平滑展开区 -->
+              <!-- 需求④: 下钻展示各大分拨中心与集配站的贡献明细列表 -->
+              <transition name="drilldown">
+                <div v-if="breakdownMap[item.metricKey]" class="center-breakdown-panel" @click.stop>
+                  <div class="breakdown-header">
+                    <div class="bh-title">
+                      <el-icon><OfficeBuilding /></el-icon>
+                      <span>{{ item.displayName }} - 各中心/集配下钻排行</span>
+                    </div>
+                    <span class="bh-tip">点击中心可切换深入查看</span>
+                  </div>
+
+                  <div class="breakdown-list">
+                    <div
+                      v-for="(subCenter, bIdx) in metricStore.getMetricBreakdown(item.metricKey)"
+                      :key="subCenter.orgId"
+                      class="breakdown-item-row"
+                      @click="drillIntoCenter(subCenter.orgId)"
+                    >
+                      <div class="center-rank">
+                        <span class="rank-idx" :class="{ 'top-3': bIdx < 3 }">{{ bIdx + 1 }}</span>
+                        <div class="center-name-box">
+                          <span class="center-name">{{ subCenter.orgName }}</span>
+                          <span class="center-type">{{ subCenter.region }} · {{ subCenter.type }}</span>
+                        </div>
+                      </div>
+
+                      <div class="center-val-box">
+                        <div class="val-line">
+                          <span class="b-val">{{ subCenter.value }}</span>
+                          <span class="b-u">{{ subCenter.unit }}</span>
+                        </div>
+                        <div class="b-dod" :class="subCenter.dod >= 0 ? 'text-rise' : 'text-fall'">
+                          环比: {{ subCenter.dod >= 0 ? '+' : '' }}{{ subCenter.dod }}%
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </transition>
+
+              <!-- 需求③: ECharts 30天完成值趋势图 (点击点显示日期和完成值) -->
               <transition name="drilldown">
                 <div
                   v-if="expandedMap[item.metricKey]"
@@ -172,10 +320,29 @@
                 >
                   <div class="chart-title">
                     <span class="title-text">
-                      <el-icon><TrendCharts /></el-icon> 近 30 天走势波动
+                      <el-icon><TrendCharts /></el-icon> 近 30 天走势波动 (点击坐标点查看明细)
                     </span>
-                    <span class="hint">滑动悬停可查数值</span>
+                    <span v-if="selectedChartPoint[item.metricKey]" class="active-point-badge">
+                      已选: {{ selectedChartPoint[item.metricKey].date }} ({{ selectedChartPoint[item.metricKey].value }}{{ item.unit }})
+                    </span>
                   </div>
+
+                  <!-- 选中点的交互明细条 (需求③) -->
+                  <div v-if="selectedChartPoint[item.metricKey]" class="point-detail-bar">
+                    <div class="pd-item">
+                      <span class="pd-lbl">日期:</span>
+                      <span class="pd-val">{{ selectedChartPoint[item.metricKey].date }}</span>
+                    </div>
+                    <div class="pd-item">
+                      <span class="pd-lbl">完成值:</span>
+                      <span class="pd-val highlight">{{ selectedChartPoint[item.metricKey].value }} {{ item.unit }}</span>
+                    </div>
+                    <div v-if="item.targetValue" class="pd-item">
+                      <span class="pd-lbl">目标值:</span>
+                      <span class="pd-val">{{ formatNumber(getScopedTarget(item)) }} {{ item.unit }}</span>
+                    </div>
+                  </div>
+
                   <div class="echart-box" :ref="el => setChartRef(el, item.metricKey)"></div>
                 </div>
               </transition>
@@ -184,98 +351,73 @@
 
           <!-- 基础数据分类 -->
           <template v-else>
-            <!-- 场地信息 -->
+            <!-- 场地信息 (融合配置工具①的温控评级标准) -->
             <div v-if="activeSubTab === 'site_info'" class="basic-section">
               <!-- 中心地址卡片 -->
               <div class="site-hero-card">
                 <div class="site-badge">
-                  <el-icon><Location /></el-icon> 中心枢纽总览
+                  <el-icon><Location /></el-icon> {{ currentOrg.name }}
                 </div>
-                <div class="site-name">华东智能枢纽转运中心</div>
+                <div class="site-name">{{ currentOrg.name }} · 基础设施枢纽</div>
                 <div class="site-addr">
                   <el-icon><OfficeBuilding /></el-icon>
-                  <span>上海市青浦区华新镇华隆路1688号中通冷链华东枢纽园区</span>
+                  <span>{{ currentOrg.region }}核心物流枢纽园区 · 标准冷链智慧立体仓储</span>
                 </div>
                 <div class="site-tags">
-                  <span class="tag-item">一级枢纽分拨</span>
-                  <span class="tag-item">多温区全自动立体库</span>
-                  <span class="tag-item">绿通直发专区</span>
+                  <span class="tag-item">现代化多温区</span>
+                  <span class="tag-item">全封闭月台</span>
+                  <span class="tag-item">24h温湿度智能传感</span>
                 </div>
               </div>
 
-              <!-- 月台与温控库房明细卡片 -->
+              <!-- 月台与温控库房明细卡片 (由温控评级标准驱动) -->
               <div class="site-grid">
-                <!-- 月台信息 -->
-                <div class="facility-card">
+                <div
+                  v-for="rule in metricStore.tempRatingRules"
+                  :key="rule.id"
+                  class="facility-card"
+                >
                   <div class="fac-header">
                     <div class="fac-title">
-                      <el-icon class="fac-icon dock"><Van /></el-icon>
-                      <span>全封闭温控月台</span>
+                      <el-icon class="fac-icon" :style="{ color: rule.normalTextColor }">
+                        <component :is="rule.code === 'dock' ? Van : rule.code === 'chilled' ? MostlyCloudy : Compass" />
+                      </el-icon>
+                      <span>{{ rule.zoneName }}</span>
                     </div>
-                    <el-tag type="success" size="small">五星评级 A+</el-tag>
+                    <!-- 温控评级 -->
+                    <el-tag
+                      size="small"
+                      effect="dark"
+                      :style="{ backgroundColor: rule.normalTextColor, borderColor: rule.normalTextColor }"
+                    >
+                      {{ rule.currentRating }}
+                    </el-tag>
                   </div>
-                  <div class="fac-stats">
-                    <div class="stat-col">
-                      <div class="stat-num">36 <span class="u">个</span></div>
-                      <div class="stat-lbl">月台泊位数量</div>
-                    </div>
-                    <div class="stat-col">
-                      <div class="stat-num">2,450 <span class="u">㎡</span></div>
-                      <div class="stat-lbl">月台总面积</div>
-                    </div>
-                    <div class="stat-col">
-                      <div class="stat-num highlight">8.5 <span class="u">℃</span></div>
-                      <div class="stat-lbl">月台平均控温</div>
-                    </div>
-                  </div>
-                </div>
 
-                <!-- 冷藏库信息 (0~4℃) -->
-                <div class="facility-card">
-                  <div class="fac-header">
-                    <div class="fac-title">
-                      <el-icon class="fac-icon chill"><MostlyCloudy /></el-icon>
-                      <span>恒温冷藏库 (0~4℃)</span>
-                    </div>
-                    <el-tag type="primary" size="small">卓越 A级评级</el-tag>
+                  <div class="fac-rule-tip">
+                    <span class="rule-lbl">控温标准:</span>
+                    <span class="rule-val">{{ rule.standardRange }}</span>
+                    <span class="rule-desc">({{ rule.ratingCriteria }})</span>
                   </div>
-                  <div class="fac-stats">
-                    <div class="stat-col">
-                      <div class="stat-num">6,800 <span class="u">㎡</span></div>
-                      <div class="stat-lbl">冷藏库总面积</div>
-                    </div>
-                    <div class="stat-col">
-                      <div class="stat-num chill-temp">2.3 <span class="u">℃</span></div>
-                      <div class="stat-lbl">实时平均温度</div>
-                    </div>
-                    <div class="stat-col">
-                      <div class="stat-num">±0.3 <span class="u">℃</span></div>
-                      <div class="stat-lbl">波动温差幅度</div>
-                    </div>
-                  </div>
-                </div>
 
-                <!-- 冷冻库信息 (-18~-25℃) -->
-                <div class="facility-card">
-                  <div class="fac-header">
-                    <div class="fac-title">
-                      <el-icon class="fac-icon frozen"><Compass /></el-icon>
-                      <span>深冷速冻库 (-18~-25℃)</span>
-                    </div>
-                    <el-tag type="primary" size="small">卓越 A级评级</el-tag>
-                  </div>
                   <div class="fac-stats">
                     <div class="stat-col">
-                      <div class="stat-num">5,200 <span class="u">㎡</span></div>
-                      <div class="stat-lbl">冷冻库总面积</div>
+                      <div class="stat-num" :style="{ color: rule.normalTextColor }">
+                        {{ rule.currentTemp }} <span class="u">℃</span>
+                      </div>
+                      <div class="stat-lbl">实时监控均温</div>
                     </div>
                     <div class="stat-col">
-                      <div class="stat-num frozen-temp">-19.6 <span class="u">℃</span></div>
-                      <div class="stat-lbl">实时平均温度</div>
+                      <div class="stat-num">
+                        {{ rule.code === 'dock' ? '36个' : rule.code === 'chilled' ? '6,800㎡' : '5,200㎡' }}
+                      </div>
+                      <div class="stat-lbl">{{ rule.code === 'dock' ? '月台泊位数' : '温区总面积' }}</div>
                     </div>
                     <div class="stat-col">
-                      <div class="stat-num">24h</div>
-                      <div class="stat-lbl">智能巡检守护</div>
+                      <div class="stat-num" :style="{ color: rule.fallRateColor }">
+                        -0.4℃
+                      </div>
+                      <div class="stat-lbl">24h环比温差</div>
                     </div>
                   </div>
                 </div>
@@ -286,9 +428,9 @@
             <div v-else-if="activeSubTab === 'material_info'" class="basic-section">
               <div class="material-banner">
                 <div class="banner-title">
-                  <el-icon><Box /></el-icon> 冷链核心物资与周转器具统计
+                  <el-icon><Box /></el-icon> {{ currentOrg.name }} - 冷链核心周转物资统计
                 </div>
-                <div class="banner-desc">实时监控在库、在途、完好率与借调流转状态</div>
+                <div class="banner-desc">实时监控在库物资库存、在途借调与完好状态</div>
               </div>
 
               <div class="materials-list">
@@ -303,7 +445,7 @@
                   </div>
                   <div class="mat-right">
                     <div class="mat-val">
-                      {{ formatNumber(Number(mat.value)) }}
+                      {{ formatNumber(Number(mat.value) * currentOrg.ratio) }}
                       <span class="unit">{{ mat.unit }}</span>
                     </div>
                     <div class="mat-trend">
@@ -314,24 +456,26 @@
               </div>
             </div>
 
-            <!-- 服务网点 -->
+            <!-- 服务网点 (点击交货网点数/提货网点数下钻展开) -->
             <div v-else-if="activeSubTab === 'service_outlet'" class="basic-section">
               <!-- 网点总量概览 -->
               <div class="outlet-hero-card">
                 <div class="title-row">
-                  <span class="title"><el-icon><Connection /></el-icon> 冷链服务网络总览</span>
+                  <span class="title"><el-icon><Connection /></el-icon> {{ currentOrg.name }} - 服务网点总览</span>
                   <el-tag size="small" type="success">100% 数字化直连</el-tag>
                 </div>
                 <div class="outlet-main-stat">
-                  <div class="huge-number">1,680 <span class="unit">家</span></div>
-                  <div class="sub-lbl">服务网点总数 (覆盖全国重点核心城市群)</div>
+                  <div class="huge-number">
+                    {{ Math.round(1680 * currentOrg.ratio) }} <span class="unit">家</span>
+                  </div>
+                  <div class="sub-lbl">服务网点总数 (覆盖周边重点核心商圈及冷链集配网络)</div>
                 </div>
 
                 <!-- 进度条占比 -->
                 <div class="progress-section">
                   <div class="prog-labels">
-                    <span class="delivery-lbl">交货网点 1,120 家 (66.7%)</span>
-                    <span class="pickup-lbl">提货网点 560 家 (33.3%)</span>
+                    <span class="delivery-lbl">交货网点 {{ Math.round(1120 * currentOrg.ratio) }} 家 (66.7%)</span>
+                    <span class="pickup-lbl">提货网点 {{ Math.round(560 * currentOrg.ratio) }} 家 (33.3%)</span>
                   </div>
                   <div class="dual-progress-bar">
                     <div class="bar-delivery" style="width: 66.7%"></div>
@@ -340,7 +484,7 @@
                 </div>
               </div>
 
-              <!-- 分类卡片 -->
+              <!-- 分类可点击卡片 -->
               <div class="outlet-cards-grid">
                 <!-- 交货网点数 -->
                 <div
@@ -357,7 +501,7 @@
                   </div>
                   <div class="card-info">
                     <div class="name">交货网点数</div>
-                    <div class="val">1,120 <span class="u">家</span></div>
+                    <div class="val">{{ Math.round(1120 * currentOrg.ratio) }} <span class="u">家</span></div>
                     <div class="desc">截单时间 · 规划交货时间</div>
                   </div>
                 </div>
@@ -377,7 +521,7 @@
                   </div>
                   <div class="card-info">
                     <div class="name">提货网点数</div>
-                    <div class="val">560 <span class="u">家</span></div>
+                    <div class="val">{{ Math.round(560 * currentOrg.ratio) }} <span class="u">家</span></div>
                     <div class="desc">提货截单 · 打卡 · 规划发车</div>
                   </div>
                 </div>
@@ -390,7 +534,7 @@
                     <div class="dh-title">
                       <el-icon class="text-delivery"><Van /></el-icon>
                       <span>交货网点排期明细</span>
-                      <span class="count-tag">共 1,120 家</span>
+                      <span class="count-tag">共 {{ Math.round(1120 * currentOrg.ratio) }} 家</span>
                     </div>
                     <span class="close-txt" @click="expandedOutletType = null">收起</span>
                   </div>
@@ -423,7 +567,7 @@
                     <div class="dh-title">
                       <el-icon class="text-pickup"><Box /></el-icon>
                       <span>提货网点时效明细</span>
-                      <span class="count-tag">共 560 家</span>
+                      <span class="count-tag">共 {{ Math.round(560 * currentOrg.ratio) }} 家</span>
                     </div>
                     <span class="close-txt" @click="expandedOutletType = null">收起</span>
                   </div>
@@ -456,7 +600,7 @@
           </template>
         </div>
 
-        <!-- 6. 小程序原生底部 TabBar (Dock) -->
+        <!-- 6. 小程序原生底部 TabBar -->
         <div class="phone-bottom-tabbar">
           <div
             v-for="tab in currentSubCategoryTabs"
@@ -501,32 +645,59 @@ import {
   Timer,
   Clock,
   User,
-  Promotion
+  Promotion,
+  Search,
+  CircleClose,
+  Histogram
 } from '@element-plus/icons-vue'
 import {
   useMetricConfigStore,
   MainCategory,
-  BusinessSubCategory,
-  BasicSubCategory
+  MetricConfigItem,
+  OrgUnit
 } from '@/store/modules/metricConfig'
 
 const router = useRouter()
 const metricStore = useMetricConfigStore()
 
 const viewMode = ref<'mobile' | 'responsive'>('mobile')
-const selectedDimension = ref('nationwide')
+// 需求②: 当日默认展示 T-1 日数据 (2026-09-21)
 const selectedDate = ref('2026-09-21')
 const currentClock = ref('09:41')
 const scrollContainer = ref<HTMLElement | null>(null)
 
-const dimensionNames: Record<string, string> = {
-  nationwide: '全国总部大盘',
-  east_china: '华东大区',
-  north_china: '华北大区',
-  shanghai_hub: '上海分拨中心'
+// 需求⑤: 顶部中心搜索
+const centerSearchKeyword = ref('')
+const isSearching = ref(false)
+const showOrgDrawer = ref(false)
+
+// 当前选中的机构对象
+const currentOrg = computed<OrgUnit>(() => {
+  return metricStore.orgList.find(o => o.id === metricStore.currentOrgId) || metricStore.orgList[0]
+})
+
+const isHeadquarter = computed(() => currentOrg.value.type === 'headquarter')
+
+// 搜索匹配的分拨中心/集配站
+const filteredSearchCenters = computed(() => {
+  if (!centerSearchKeyword.value.trim()) return []
+  const kw = centerSearchKeyword.value.trim().toLowerCase()
+  return metricStore.orgList.filter(o => o.type !== 'headquarter' && (
+    o.name.toLowerCase().includes(kw) || o.region.toLowerCase().includes(kw)
+  ))
+})
+
+const selectSearchedCenter = (center: OrgUnit) => {
+  metricStore.currentOrgId = center.id
+  centerSearchKeyword.value = ''
+  isSearching.value = false
 }
 
-const selectedDimensionLabel = computed(() => dimensionNames[selectedDimension.value] || '全国总部大盘')
+const onOrgChange = () => {
+  if (scrollContainer.value) {
+    scrollContainer.value.scrollTop = 0
+  }
+}
 
 // 1. 顶部主分类切换：业务数据 vs 基础数据
 const activeMainTab = ref<MainCategory>('business')
@@ -548,12 +719,10 @@ const basicSubTabs = [
 // 当前子分类 Tab
 const activeSubTab = ref<string>('operation_volume')
 
-// 根据主分类切换时的可用子分类
 const currentSubCategoryTabs = computed(() => {
   return activeMainTab.value === 'business' ? businessSubTabs : basicSubTabs
 })
 
-// 主分类切换函数
 const switchMainTab = (tab: MainCategory) => {
   activeMainTab.value = tab
   if (tab === 'business') {
@@ -566,21 +735,19 @@ const switchMainTab = (tab: MainCategory) => {
   }
 }
 
-// 切换子分类时平滑滚顶
 watch(activeSubTab, () => {
   if (scrollContainer.value) {
     scrollContainer.value.scrollTop = 0
   }
 })
 
-// 获取当前子分类名称
 const currentSubCategoryTitle = computed(() => {
   const allTabs = [...businessSubTabs, ...basicSubTabs]
   return allTabs.find(t => t.key === activeSubTab.value)?.name || '指标明细'
 })
 
-// 控制服务网点下钻展开状态 ('delivery' | 'pickup' | null)
-const expandedOutletType = ref<'delivery' | 'pickup' | null>('delivery')
+// 控制服务网点下钻展开 ('delivery' | 'pickup' | null)
+const expandedOutletType = ref<'delivery' | 'pickup' | null>(null)
 
 const toggleOutletExpand = (type: 'delivery' | 'pickup') => {
   if (expandedOutletType.value === type) {
@@ -590,132 +757,78 @@ const toggleOutletExpand = (type: 'delivery' | 'pickup') => {
   }
 }
 
-// 交货网点下钻数据源 (交货网点，截单时间，规划交货时间)
-const deliveryOutletList = [
-  {
-    id: 'd1',
-    name: '上海青浦华新网点',
-    code: 'SH-QP-001',
-    cutoffTime: '17:00',
-    plannedDeliveryTime: '次日 08:30',
-    tag: '一级干线直达'
-  },
-  {
-    id: 'd2',
-    name: '苏州昆山花桥网点',
-    code: 'SZ-KS-008',
-    cutoffTime: '17:30',
-    plannedDeliveryTime: '次日 09:00',
-    tag: '优先直送'
-  },
-  {
-    id: 'd3',
-    name: '杭州萧山钱江网点',
-    code: 'HZ-XS-012',
-    cutoffTime: '16:45',
-    plannedDeliveryTime: '次日 08:45',
-    tag: '冷链专线'
-  },
-  {
-    id: 'd4',
-    name: '无锡新吴梅村网点',
-    code: 'WX-XW-005',
-    cutoffTime: '17:15',
-    plannedDeliveryTime: '次日 09:15',
-    tag: '标准配送'
-  },
-  {
-    id: 'd5',
-    name: '嘉兴秀洲高新网点',
-    code: 'JX-XZ-003',
-    cutoffTime: '18:00',
-    plannedDeliveryTime: '次日 09:30',
-    tag: '定时达'
-  },
-  {
-    id: 'd6',
-    name: '南京江宁百家湖网点',
-    code: 'NJ-JN-015',
-    cutoffTime: '16:30',
-    plannedDeliveryTime: '次日 09:00',
-    tag: '重点保供'
-  }
-]
+// 需求④: 控制各指标下钻各大中心明细的展开状态
+const breakdownMap = ref<Record<string, boolean>>({})
 
-// 提货网点下钻数据源 (提货网点，提货截单时间，规划司机打卡时间，规划发车时间)
-const pickupOutletList = [
-  {
-    id: 'p1',
-    name: '嘉兴南湖产地直采仓',
-    code: 'PU-JX-001',
-    pickupCutoffTime: '14:30',
-    plannedClockInTime: '15:00',
-    plannedDepartureTime: '15:30',
-    tag: '源头产地仓'
-  },
-  {
-    id: 'p2',
-    name: '湖州德清生鲜集配仓',
-    code: 'PU-HZ-004',
-    pickupCutoffTime: '14:00',
-    plannedClockInTime: '14:30',
-    plannedDepartureTime: '15:00',
-    tag: '特色冷鲜仓'
-  },
-  {
-    id: 'p3',
-    name: '苏州阳澄湖特色前置仓',
-    code: 'PU-SZ-007',
-    pickupCutoffTime: '15:00',
-    plannedClockInTime: '15:30',
-    plannedDepartureTime: '16:00',
-    tag: '时令保鲜专仓'
-  },
-  {
-    id: 'p4',
-    name: '上海金山现代农业直采站',
-    code: 'PU-SH-002',
-    pickupCutoffTime: '15:30',
-    plannedClockInTime: '16:00',
-    plannedDepartureTime: '16:30',
-    tag: '果蔬直发中心'
-  },
-  {
-    id: 'p5',
-    name: '南通海门禽蛋集约中心',
-    code: 'PU-NT-009',
-    pickupCutoffTime: '14:15',
-    plannedClockInTime: '14:45',
-    plannedDepartureTime: '15:15',
-    tag: '恒温专用站'
-  },
-  {
-    id: 'p6',
-    name: '舟山定海海鲜直配中心',
-    code: 'PU-ZS-003',
-    pickupCutoffTime: '13:30',
-    plannedClockInTime: '14:00',
-    plannedDepartureTime: '14:30',
-    tag: '极速冷冻直发'
-  }
-]
+const toggleBreakdown = (metricKey: string) => {
+  breakdownMap.value[metricKey] = !breakdownMap.value[metricKey]
+}
 
-// 过滤指定子分类下的指标列表
+const drillIntoCenter = (orgId: string) => {
+  metricStore.currentOrgId = orgId
+}
+
+// 需求①: 根据查看机构动态计算指标数值
+const getScopedValue = (item: MetricConfigItem) => {
+  if (typeof item.value !== 'number') return item.value ?? 0
+  if (isHeadquarter.value) return item.value
+  // 分拨中心/集配站显示本部门数据
+  return Number((item.value * currentOrg.value.ratio).toFixed(1))
+}
+
+const getScopedTarget = (item: MetricConfigItem) => {
+  if (!item.targetValue) return null
+  if (isHeadquarter.value) return item.targetValue
+  return Number((item.targetValue * currentOrg.value.ratio).toFixed(1))
+}
+
+// 判定是否达成目标
+const isTargetAchieved = (item: MetricConfigItem) => {
+  const val = getScopedValue(item)
+  const target = getScopedTarget(item)
+  if (typeof val !== 'number' || typeof target !== 'number') return true
+  if (item.trendType === 'positive') {
+    return val >= target
+  } else {
+    return val <= target
+  }
+}
+
+// 获取完成值字体颜色 (根据配置工具④是否达成目标值配置)
+const getMetricValueColor = (item: MetricConfigItem) => {
+  if (!item.targetValue) return '#0f172a'
+  const achieved = isTargetAchieved(item)
+  return achieved ? (item.achievedColor || '#16a34a') : (item.unachievedColor || '#dc2626')
+}
+
+// 获取环比徽章样式 (配置工具④字体颜色配置生效)
+const getRateBadgeStyle = (rate: number, item: MetricConfigItem) => {
+  if (rate === 0) return { background: '#f1f5f9', color: '#94a3b8' }
+  const isUp = rate > 0
+  const color = isUp ? (item.dodRiseColor || '#ef4444') : (item.dodFallColor || '#22c55e')
+  const bg = isUp ? '#fef2f2' : '#f0fdf4'
+  return {
+    color,
+    background: bg
+  }
+}
+
+// 过滤当前子分类下的指标列表
 const getMetricsBySub = (subKey: string) => {
   return metricStore.configs
     .filter(c => c.subCategory === subKey && c.isVisible)
     .sort((a, b) => a.sortOrder - b.sortOrder)
 }
 
-// 当前子分类展示中的指标列表
 const currentMetricList = computed(() => {
   return getMetricsBySub(activeSubTab.value)
 })
 
-// 控制展开折叠与 ECharts 实例管理
+// 控制展开折叠与 ECharts 实例管理 (需求③: 点击折线图上的某个点显示日期和完成值)
 const expandedMap = ref<Record<string, boolean>>({})
 const chartInstances: Record<string, echarts.ECharts> = {}
 const chartDomRefs: Record<string, HTMLElement> = {}
+const selectedChartPoint = ref<Record<string, { date: string; value: number }>>({})
 
 const setChartRef = (el: any, key: string) => {
   if (el) {
@@ -730,19 +843,6 @@ const formatNumber = (val: number | string) => {
   return val
 }
 
-// 红涨绿跌色彩映射 (中国商务习惯：涨红跌绿)
-const getRateColorClass = (rate: number, trendType: 'positive' | 'negative') => {
-  if (rate === 0) return 'neutral'
-  const isUp = rate > 0
-  if (trendType === 'positive') {
-    return isUp ? 'is-rise' : 'is-fall'
-  } else {
-    // 逆向指标（如超时、客诉率、临时托盘数），上涨为警示红，下跌为良好绿
-    return isUp ? 'is-rise' : 'is-fall'
-  }
-}
-
-// 展开/收起卡片并按需初始化折线图
 const toggleExpand = async (metricKey: string) => {
   expandedMap.value[metricKey] = !expandedMap.value[metricKey]
 
@@ -759,7 +859,7 @@ const toggleExpand = async (metricKey: string) => {
   }
 }
 
-// 渲染近 30 天 ECharts 走势
+// 需求③: 渲染近 30 天 ECharts 走势，点击折线图上的点显示日期和完成值
 const renderChart = (metricKey: string) => {
   const dom = chartDomRefs[metricKey]
   if (!dom) return
@@ -772,7 +872,8 @@ const renderChart = (metricKey: string) => {
   chartInstances[metricKey] = chart
 
   const config = metricStore.configs.find(c => c.metricKey === metricKey)
-  const baseNum = typeof config?.value === 'number' ? config.value : 100
+  const scopedBase = getScopedValue(config || { value: 100 } as any)
+  const baseNum = typeof scopedBase === 'number' ? scopedBase : 100
 
   // 模拟近 30 天走势数据
   const dates: string[] = []
@@ -780,10 +881,16 @@ const renderChart = (metricKey: string) => {
   const now = new Date()
   for (let i = 29; i >= 0; i--) {
     const d = new Date(now.getTime() - i * 24 * 3600 * 1000)
-    dates.push(`${d.getMonth() + 1}/${d.getDate()}`)
-    const fluctuation = (Math.sin(i / 2.5) * 0.12 + (Math.random() - 0.5) * 0.06)
+    dates.push(`${d.getMonth() + 1}月${d.getDate()}日`)
+    const fluctuation = (Math.sin(i / 2.5) * 0.12 + (Math.random() - 0.5) * 0.05)
     const val = Number((baseNum * (1 + fluctuation)).toFixed(1))
     values.push(val)
+  }
+
+  // 默认选中最新点
+  selectedChartPoint.value[metricKey] = {
+    date: dates[dates.length - 1],
+    value: values[values.length - 1]
   }
 
   const isPositive = config?.trendType === 'positive'
@@ -792,19 +899,22 @@ const renderChart = (metricKey: string) => {
 
   const option: echarts.EChartsOption = {
     grid: {
-      left: 38,
-      right: 12,
-      top: 18,
+      left: 42,
+      right: 14,
+      top: 20,
       bottom: 24
     },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(0, 33, 64, 0.88)',
+      backgroundColor: 'rgba(0, 33, 64, 0.90)',
       borderColor: 'transparent',
       textStyle: { color: '#fff', fontSize: 11 },
       formatter: (params: any) => {
         const p = Array.isArray(params) ? params[0] : params
-        return `${p.name}<br/><b>${p.value}</b> ${config?.unit || ''}`
+        return `<div style="font-family:sans-serif;">
+          <div style="color:#94a3b8;font-size:10px;">${p.name}</div>
+          <div style="font-size:13px;font-weight:bold;margin-top:2px;">完成值: ${p.value} ${config?.unit || ''}</div>
+        </div>`
       }
     },
     xAxis: {
@@ -822,12 +932,13 @@ const renderChart = (metricKey: string) => {
     },
     series: [
       {
-        name: config?.displayName || '数值',
+        name: config?.displayName || '完成值',
         type: 'line',
         smooth: true,
-        showSymbol: false,
+        showSymbol: true,
+        symbolSize: 6,
         data: values,
-        lineStyle: { width: 2.2, color: themeColor },
+        lineStyle: { width: 2.4, color: themeColor },
         itemStyle: { color: themeColor },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -840,14 +951,51 @@ const renderChart = (metricKey: string) => {
   }
 
   chart.setOption(option)
+
+  // 需求③: 点击折线图上的某个点，显示日期和完成值
+  chart.on('click', (params: any) => {
+    if (params && params.name) {
+      selectedChartPoint.value[metricKey] = {
+        date: params.name,
+        value: params.value
+      }
+    }
+  })
 }
+
+// 机构切换重刷图表
+watch(() => metricStore.currentOrgId, () => {
+  Object.keys(expandedMap.value).forEach(key => {
+    if (expandedMap.value[key]) {
+      renderChart(key)
+    }
+  })
+})
 
 const goToConfig = () => {
   router.push('/dashboard-config')
 }
 
+// 服务网点数据源
+const deliveryOutletList = [
+  { id: 'd1', name: '上海青浦华新网点', cutoffTime: '17:00', plannedDeliveryTime: '次日 08:30', tag: '一级干线直达' },
+  { id: 'd2', name: '苏州昆山花桥网点', cutoffTime: '17:30', plannedDeliveryTime: '次日 09:00', tag: '优先直送' },
+  { id: 'd3', name: '杭州萧山钱江网点', cutoffTime: '16:45', plannedDeliveryTime: '次日 08:45', tag: '冷链专线' },
+  { id: 'd4', name: '无锡新吴梅村网点', cutoffTime: '17:15', plannedDeliveryTime: '次日 09:15', tag: '标准配送' },
+  { id: 'd5', name: '嘉兴秀洲高新网点', cutoffTime: '18:00', plannedDeliveryTime: '次日 09:30', tag: '定时达' },
+  { id: 'd6', name: '南京江宁百家湖网点', cutoffTime: '16:30', plannedDeliveryTime: '次日 09:00', tag: '重点保供' }
+]
+
+const pickupOutletList = [
+  { id: 'p1', name: '嘉兴南湖产地直采仓', pickupCutoffTime: '14:30', plannedClockInTime: '15:00', plannedDepartureTime: '15:30', tag: '源头产地仓' },
+  { id: 'p2', name: '湖州德清生鲜集配仓', pickupCutoffTime: '14:00', plannedClockInTime: '14:30', plannedDepartureTime: '15:00', tag: '特色冷鲜仓' },
+  { id: 'p3', name: '苏州阳澄湖特色前置仓', pickupCutoffTime: '15:00', plannedClockInTime: '15:30', plannedDepartureTime: '16:00', tag: '时令保鲜专仓' },
+  { id: 'p4', name: '上海金山现代农业直采站', pickupCutoffTime: '15:30', plannedClockInTime: '16:00', plannedDepartureTime: '16:30', tag: '果蔬直发中心' },
+  { id: 'p5', name: '南通海门禽蛋集约中心', pickupCutoffTime: '14:15', plannedClockInTime: '14:45', plannedDepartureTime: '15:15', tag: '恒温专用站' },
+  { id: 'p6', name: '舟山定海海鲜直配中心', pickupCutoffTime: '13:30', plannedClockInTime: '14:00', plannedDepartureTime: '14:30', tag: '极速冷冻直发' }
+]
+
 onMounted(() => {
-  // 默认展开第一个指标卡片演示走势
   if (currentMetricList.value.length > 0) {
     const firstKey = currentMetricList.value[0].metricKey
     toggleExpand(firstKey)
@@ -895,9 +1043,24 @@ onMounted(() => {
     .bar-right {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
 
-      .dimension-select,
+      .org-selector-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        .lbl {
+          font-size: 12px;
+          color: #64748b;
+          white-space: nowrap;
+        }
+
+        .org-select {
+          width: 170px;
+        }
+      }
+
       .date-picker {
         width: 140px;
       }
@@ -933,16 +1096,13 @@ onMounted(() => {
         border: 1px solid #e5e7eb;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
       }
-      .phone-status-bar {
-        display: none;
-      }
+      .phone-status-bar,
       .wechat-capsule {
         display: none;
       }
     }
   }
 
-  // 模拟手机壳
   .phone-shell {
     background: #f8fafc;
     display: flex;
@@ -976,7 +1136,7 @@ onMounted(() => {
       }
     }
 
-    // 2. 小程序导航条与微信胶囊
+    // 2. 小程序导航条
     .mini-app-navbar {
       background: #fff;
       padding: 10px 16px;
@@ -990,12 +1150,25 @@ onMounted(() => {
         display: flex;
         flex-direction: column;
 
-        .nav-title {
-          font-size: 16px;
-          font-weight: 700;
-          color: #0f172a;
-          letter-spacing: -0.2px;
+        .org-badge-wrap {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          cursor: pointer;
+
+          .nav-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.2px;
+          }
+
+          .arrow {
+            font-size: 12px;
+            color: #64748b;
+          }
         }
+
         .nav-subtitle {
           font-size: 11px;
           color: #64748b;
@@ -1014,23 +1187,122 @@ onMounted(() => {
         font-size: 12px;
         color: #334155;
 
-        .capsule-dots {
-          font-weight: bold;
-          font-size: 11px;
+        .capsule-dots { font-weight: bold; font-size: 11px; }
+        .capsule-divider { width: 1px; height: 12px; background: #cbd5e1; }
+        .capsule-circle { font-size: 12px; font-weight: bold; }
+      }
+    }
+
+    // 需求⑤: 总部下搜索中心
+    .hq-search-bar {
+      background: #fff;
+      padding: 8px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      position: relative;
+      flex-shrink: 0;
+
+      .search-input-wrapper {
+        display: flex;
+        align-items: center;
+        background: #f1f5f9;
+        border-radius: 8px;
+        padding: 6px 10px;
+        gap: 6px;
+
+        .search-icon {
+          font-size: 14px;
+          color: #94a3b8;
         }
-        .capsule-divider {
-          width: 1px;
-          height: 12px;
-          background: #cbd5e1;
-        }
-        .capsule-circle {
+
+        .mobile-search-input {
+          flex: 1;
+          border: none;
+          background: transparent;
+          outline: none;
           font-size: 12px;
-          font-weight: bold;
+          color: #0f172a;
+
+          &::placeholder {
+            color: #94a3b8;
+          }
+        }
+
+        .clear-icon {
+          font-size: 14px;
+          color: #94a3b8;
+          cursor: pointer;
+        }
+      }
+
+      .search-results-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border-bottom: 1px solid #e2e8f0;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        z-index: 50;
+        max-height: 280px;
+        overflow-y: auto;
+        padding: 6px 0;
+
+        .res-tip {
+          padding: 6px 14px;
+          font-size: 10px;
+          color: #94a3b8;
+          border-bottom: 1px solid #f1f5f9;
+        }
+
+        .search-res-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 10px 14px;
+          border-bottom: 1px solid #f8fafc;
+          cursor: pointer;
+
+          &:hover {
+            background: #f0fdfa;
+          }
+
+          .res-info {
+            display: flex;
+            flex-direction: column;
+
+            .res-name {
+              font-size: 13px;
+              font-weight: 600;
+              color: #0f172a;
+            }
+            .res-reg {
+              font-size: 10px;
+              color: #64748b;
+            }
+          }
         }
       }
     }
 
-    // 3. 顶部 2 栏切换：业务数据 vs 基础数据
+    .branch-view-banner {
+      background: #fefce8;
+      border-bottom: 1px solid #fef08a;
+      padding: 6px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+
+      .bb-left {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: #854d0e;
+      }
+    }
+
+    // 4. 顶部 2 栏切换
     .top-segmented-bar {
       display: flex;
       background: #fff;
@@ -1073,7 +1345,7 @@ onMounted(() => {
       }
     }
 
-    // 4. 滚动内容区
+    // 5. 滚动内容区
     .cards-scroll-body {
       flex: 1;
       overflow-y: auto;
@@ -1102,6 +1374,15 @@ onMounted(() => {
             border-radius: 50%;
             background: #00bebe;
           }
+
+          .org-scope-badge {
+            font-size: 10px;
+            font-weight: normal;
+            background: #f1f5f9;
+            color: #64748b;
+            padding: 1px 6px;
+            border-radius: 10px;
+          }
         }
         .banner-sub {
           font-size: 11px;
@@ -1116,7 +1397,6 @@ onMounted(() => {
         padding: 14px 16px;
         border: 1px solid #f1f5f9;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-        cursor: pointer;
         transition: all 0.22s ease;
 
         &:hover {
@@ -1133,11 +1413,12 @@ onMounted(() => {
           display: flex;
           justify-content: space-between;
           align-items: center;
+          cursor: pointer;
 
           .metric-name-group {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
 
             .metric-name {
               font-size: 13px;
@@ -1150,14 +1431,31 @@ onMounted(() => {
               line-height: 18px;
               padding: 0 4px;
             }
+            .t2-tag {
+              font-size: 10px;
+              height: 20px;
+              line-height: 18px;
+              padding: 0 5px;
+            }
           }
 
-          .expand-icon {
-            color: #94a3b8;
-            transition: transform 0.22s;
-            &.rotated {
-              transform: rotate(180deg);
-              color: #00bebe;
+          .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+
+            .tap-hint {
+              font-size: 10px;
+              color: #94a3b8;
+            }
+
+            .expand-icon {
+              color: #94a3b8;
+              transition: transform 0.22s;
+              &.rotated {
+                transform: rotate(180deg);
+                color: #00bebe;
+              }
             }
           }
         }
@@ -1165,26 +1463,62 @@ onMounted(() => {
         .card-value-row {
           margin-top: 8px;
           display: flex;
+          justify-content: space-between;
           align-items: baseline;
-          gap: 5px;
+          cursor: pointer;
 
-          .main-val {
-            font-size: 26px;
-            font-weight: 800;
-            color: #0f172a;
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            letter-spacing: -0.5px;
+          .val-main-box {
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+
+            .main-val {
+              font-size: 26px;
+              font-weight: 800;
+              font-family: 'Helvetica Neue', Arial, sans-serif;
+              letter-spacing: -0.5px;
+              transition: color 0.2s;
+            }
+            .unit {
+              font-size: 12px;
+              color: #64748b;
+              font-weight: 500;
+            }
           }
-          .unit {
-            font-size: 12px;
+
+          .target-val-box {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
             color: #64748b;
-            font-weight: 500;
+
+            .t-val {
+              font-weight: 600;
+              color: #334155;
+            }
+
+            .t-status {
+              font-size: 10px;
+              padding: 1px 5px;
+              border-radius: 4px;
+
+              &.achieved {
+                background: #f0fdf4;
+                color: #16a34a;
+              }
+              &.unachieved {
+                background: #fef2f2;
+                color: #dc2626;
+              }
+            }
           }
         }
 
         .card-rates-row {
           margin-top: 8px;
           display: flex;
+          align-items: center;
           gap: 8px;
           flex-wrap: wrap;
 
@@ -1202,22 +1536,147 @@ onMounted(() => {
               opacity: 0.85;
               margin-right: 2px;
             }
+          }
 
-            &.is-rise {
-              background: #fef2f2;
-              color: #ef4444; // 红涨
-            }
-            &.is-fall {
-              background: #f0fdf4;
-              color: #22c55e; // 绿跌
-            }
-            &.neutral {
-              background: #f1f5f9;
-              color: #94a3b8;
+          .breakdown-toggle-btn {
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: #0284c7;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            padding: 2px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+
+            &:hover,
+            &.active {
+              background: #0284c7;
+              color: #fff;
+              border-color: #0284c7;
             }
           }
         }
 
+        // 需求④: 各中心/集配下钻排列表格面板
+        .center-breakdown-panel {
+          margin-top: 12px;
+          padding: 10px 12px;
+          background: #f8fafc;
+          border-radius: 10px;
+          border: 1px solid #e2e8f0;
+
+          .breakdown-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 8px;
+
+            .bh-title {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              font-size: 12px;
+              font-weight: 700;
+              color: #1e293b;
+            }
+            .bh-tip {
+              font-size: 10px;
+              color: #94a3b8;
+            }
+          }
+
+          .breakdown-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+
+            .breakdown-item-row {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              background: #fff;
+              padding: 8px 10px;
+              border-radius: 6px;
+              border: 1px solid #f1f5f9;
+              cursor: pointer;
+              transition: all 0.18s;
+
+              &:hover {
+                border-color: #00bebe;
+                background: #f0fdfa;
+              }
+
+              .center-rank {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+
+                .rank-idx {
+                  width: 18px;
+                  height: 18px;
+                  line-height: 18px;
+                  text-align: center;
+                  font-size: 10px;
+                  font-weight: 700;
+                  background: #f1f5f9;
+                  color: #64748b;
+                  border-radius: 50%;
+
+                  &.top-3 {
+                    background: #ffedd5;
+                    color: #ea580c;
+                  }
+                }
+
+                .center-name-box {
+                  display: flex;
+                  flex-direction: column;
+
+                  .center-name {
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: #0f172a;
+                  }
+                  .center-type {
+                    font-size: 9px;
+                    color: #94a3b8;
+                  }
+                }
+              }
+
+              .center-val-box {
+                text-align: right;
+
+                .val-line {
+                  .b-val {
+                    font-size: 13px;
+                    font-weight: 700;
+                    color: #0f172a;
+                  }
+                  .b-u {
+                    font-size: 10px;
+                    color: #64748b;
+                    margin-left: 2px;
+                  }
+                }
+
+                .b-dod {
+                  font-size: 9px;
+                  &.text-rise { color: #ef4444; }
+                  &.text-fall { color: #22c55e; }
+                }
+              }
+            }
+          }
+        }
+
+        // 需求③: 折线趋势图展开区
         .chart-drawer {
           margin-top: 12px;
           padding-top: 10px;
@@ -1230,34 +1689,57 @@ onMounted(() => {
             font-size: 11px;
             color: #64748b;
             font-weight: 600;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
 
             .title-text {
               display: flex;
               align-items: center;
               gap: 4px;
             }
-            .hint {
+            .active-point-badge {
               font-size: 10px;
-              color: #94a3b8;
-              font-weight: normal;
+              color: #00bebe;
+              background: rgba(0, 190, 190, 0.08);
+              padding: 1px 6px;
+              border-radius: 4px;
+            }
+          }
+
+          .point-detail-bar {
+            display: flex;
+            gap: 14px;
+            background: #f8fafc;
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 11px;
+
+            .pd-item {
+              display: flex;
+              gap: 3px;
+
+              .pd-lbl { color: #64748b; }
+              .pd-val {
+                font-weight: 600;
+                color: #0f172a;
+                &.highlight { color: #00bebe; font-weight: 700; }
+              }
             }
           }
 
           .echart-box {
             width: 100%;
-            height: 155px;
+            height: 160px;
           }
         }
       }
 
-      // ================= 基础数据专有卡片 =================
+      // 基础数据专有卡片
       .basic-section {
         display: flex;
         flex-direction: column;
         gap: 12px;
 
-        // 场地信息
         .site-hero-card {
           background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
           color: #fff;
@@ -1323,7 +1805,7 @@ onMounted(() => {
               display: flex;
               justify-content: space-between;
               align-items: center;
-              margin-bottom: 12px;
+              margin-bottom: 8px;
 
               .fac-title {
                 display: flex;
@@ -1332,14 +1814,22 @@ onMounted(() => {
                 font-size: 14px;
                 font-weight: 700;
                 color: #1e293b;
-
-                .fac-icon {
-                  font-size: 18px;
-                  &.dock { color: #f59e0b; }
-                  &.chill { color: #0284c7; }
-                  &.frozen { color: #6366f1; }
-                }
               }
+            }
+
+            .fac-rule-tip {
+              font-size: 11px;
+              color: #64748b;
+              background: #f8fafc;
+              padding: 4px 8px;
+              border-radius: 6px;
+              margin-bottom: 10px;
+              display: flex;
+              gap: 4px;
+
+              .rule-lbl { color: #94a3b8; }
+              .rule-val { font-weight: 600; color: #334155; }
+              .rule-desc { color: #94a3b8; }
             }
 
             .fac-stats {
@@ -1359,14 +1849,7 @@ onMounted(() => {
                   font-weight: 800;
                   color: #0f172a;
 
-                  .u {
-                    font-size: 11px;
-                    font-weight: normal;
-                    color: #64748b;
-                  }
-                  &.highlight { color: #f59e0b; }
-                  &.chill-temp { color: #0284c7; }
-                  &.frozen-temp { color: #6366f1; }
+                  .u { font-size: 11px; font-weight: normal; color: #64748b; }
                 }
                 .stat-lbl {
                   font-size: 10px;
@@ -1378,7 +1861,6 @@ onMounted(() => {
           }
         }
 
-        // 物资信息
         .material-banner {
           background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 100%);
           padding: 12px 14px;
@@ -1416,47 +1898,28 @@ onMounted(() => {
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 
             .mat-left {
-              .mat-name {
-                font-size: 13px;
-                font-weight: 700;
-                color: #1e293b;
-              }
-              .mat-extra {
-                font-size: 11px;
-                color: #64748b;
-                margin-top: 3px;
-              }
+              .mat-name { font-size: 13px; font-weight: 700; color: #1e293b; }
+              .mat-extra { font-size: 11px; color: #64748b; margin-top: 3px; }
             }
 
             .mat-right {
               text-align: right;
-
               .mat-val {
                 font-size: 18px;
                 font-weight: 800;
                 color: #0f172a;
-
-                .unit {
-                  font-size: 11px;
-                  color: #64748b;
-                  font-weight: normal;
-                }
+                .unit { font-size: 11px; color: #64748b; font-weight: normal; }
               }
               .mat-trend {
                 font-size: 10px;
                 color: #64748b;
                 margin-top: 2px;
-
-                .text-success {
-                  color: #22c55e;
-                  font-weight: 600;
-                }
+                .text-success { color: #22c55e; font-weight: 600; }
               }
             }
           }
         }
 
-        // 服务网点
         .outlet-hero-card {
           background: #fff;
           border-radius: 16px;
@@ -1468,74 +1931,40 @@ onMounted(() => {
             display: flex;
             justify-content: space-between;
             align-items: center;
-
-            .title {
-              font-size: 14px;
-              font-weight: 700;
-              color: #0f172a;
-              display: flex;
-              align-items: center;
-              gap: 6px;
-            }
+            .title { font-size: 14px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 6px; }
           }
 
           .outlet-main-stat {
             margin: 12px 0;
-
             .huge-number {
               font-size: 32px;
               font-weight: 900;
               color: #00bebe;
               font-family: 'Helvetica Neue', Arial, sans-serif;
               line-height: 1;
-
-              .unit {
-                font-size: 14px;
-                font-weight: 600;
-                color: #475569;
-              }
+              .unit { font-size: 14px; font-weight: 600; color: #475569; }
             }
-            .sub-lbl {
-              font-size: 11px;
-              color: #64748b;
-              margin-top: 4px;
-            }
+            .sub-lbl { font-size: 11px; color: #64748b; margin-top: 4px; }
           }
 
           .progress-section {
             margin-top: 14px;
-
             .prog-labels {
               display: flex;
               justify-content: space-between;
               font-size: 11px;
               margin-bottom: 6px;
-
-              .delivery-lbl {
-                color: #0284c7;
-                font-weight: 600;
-              }
-              .pickup-lbl {
-                color: #f59e0b;
-                font-weight: 600;
-              }
+              .delivery-lbl { color: #0284c7; font-weight: 600; }
+              .pickup-lbl { color: #f59e0b; font-weight: 600; }
             }
-
             .dual-progress-bar {
               height: 8px;
               background: #f1f5f9;
               border-radius: 4px;
               overflow: hidden;
               display: flex;
-
-              .bar-delivery {
-                background: #0284c7;
-                height: 100%;
-              }
-              .bar-pickup {
-                background: #f59e0b;
-                height: 100%;
-              }
+              .bar-delivery { background: #0284c7; height: 100%; }
+              .bar-pickup { background: #f59e0b; height: 100%; }
             }
           }
         }
@@ -1558,15 +1987,8 @@ onMounted(() => {
             transition: all 0.22s ease;
 
             &.clickable {
-              &:hover {
-                border-color: #cbd5e1;
-                transform: translateY(-1px);
-              }
-
-              &.is-active {
-                border-color: #00bebe;
-                box-shadow: 0 4px 14px rgba(0, 190, 190, 0.12);
-              }
+              &:hover { border-color: #cbd5e1; transform: translateY(-1px); }
+              &.is-active { border-color: #00bebe; box-shadow: 0 4px 14px rgba(0, 190, 190, 0.12); }
             }
 
             .card-top-action {
@@ -1581,14 +2003,8 @@ onMounted(() => {
                 font-size: 10px;
                 color: #00bebe;
                 font-weight: 600;
-
-                .el-icon {
-                  transition: transform 0.22s ease;
-                }
-
-                &.rotated .el-icon {
-                  transform: rotate(180deg);
-                }
+                .el-icon { transition: transform 0.22s ease; }
+                &.rotated .el-icon { transform: rotate(180deg); }
               }
             }
 
@@ -1600,45 +2016,24 @@ onMounted(() => {
               align-items: center;
               justify-content: center;
               font-size: 16px;
-
-              &.delivery {
-                background: #e0f2fe;
-                color: #0284c7;
-              }
-              &.pickup {
-                background: #fef3c7;
-                color: #d97706;
-              }
+              &.delivery { background: #e0f2fe; color: #0284c7; }
+              &.pickup { background: #fef3c7; color: #d97706; }
             }
 
             .card-info {
-              .name {
-                font-size: 12px;
-                color: #64748b;
-                font-weight: 500;
-              }
+              .name { font-size: 12px; color: #64748b; font-weight: 500; }
               .val {
                 font-size: 20px;
                 font-weight: 800;
                 color: #0f172a;
                 margin: 2px 0;
-
-                .u {
-                  font-size: 11px;
-                  color: #94a3b8;
-                  font-weight: normal;
-                }
+                .u { font-size: 11px; color: #94a3b8; font-weight: normal; }
               }
-              .desc {
-                font-size: 10px;
-                color: #94a3b8;
-                line-height: 1.3;
-              }
+              .desc { font-size: 10px; color: #94a3b8; line-height: 1.3; }
             }
           }
         }
 
-        // 下钻面板样式
         .outlet-drilldown-box {
           background: #fff;
           border-radius: 14px;
@@ -1647,12 +2042,8 @@ onMounted(() => {
           overflow: hidden;
           padding: 12px 14px 14px;
 
-          &.delivery-box {
-            border-top: 3px solid #0284c7;
-          }
-          &.pickup-box {
-            border-top: 3px solid #f59e0b;
-          }
+          &.delivery-box { border-top: 3px solid #0284c7; }
+          &.pickup-box { border-top: 3px solid #f59e0b; }
 
           .drilldown-header {
             display: flex;
@@ -1669,26 +2060,11 @@ onMounted(() => {
               font-size: 13px;
               font-weight: 700;
               color: #0f172a;
-
               .text-delivery { color: #0284c7; font-size: 15px; }
               .text-pickup { color: #f59e0b; font-size: 15px; }
-
-              .count-tag {
-                font-size: 10px;
-                font-weight: normal;
-                background: #f1f5f9;
-                color: #64748b;
-                padding: 1px 6px;
-                border-radius: 10px;
-              }
+              .count-tag { font-size: 10px; font-weight: normal; background: #f1f5f9; color: #64748b; padding: 1px 6px; border-radius: 10px; }
             }
-
-            .close-txt {
-              font-size: 11px;
-              color: #94a3b8;
-              cursor: pointer;
-              &:hover { color: #64748b; }
-            }
+            .close-txt { font-size: 11px; color: #94a3b8; cursor: pointer; &:hover { color: #64748b; } }
           }
 
           .outlet-item-list {
@@ -1711,45 +2087,25 @@ onMounted(() => {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-
-                .outlet-title {
-                  font-size: 12px;
-                  font-weight: 700;
-                  color: #1e293b;
-                }
+                .outlet-title { font-size: 12px; font-weight: 700; color: #1e293b; }
               }
 
               .schedule-grid {
                 display: grid;
                 gap: 6px;
                 margin-top: 2px;
-
-                &.delivery-schedule {
-                  grid-template-columns: 1fr 1fr;
-                }
-
-                &.pickup-schedule {
-                  grid-template-columns: 1fr 1fr 1fr;
-                }
+                &.delivery-schedule { grid-template-columns: 1fr 1fr; }
+                &.pickup-schedule { grid-template-columns: 1fr 1fr 1fr; }
 
                 .schedule-item {
                   display: flex;
                   flex-direction: column;
                   gap: 1px;
-
-                  .lbl {
-                    font-size: 10px;
-                    color: #94a3b8;
-                    display: flex;
-                    align-items: center;
-                    gap: 3px;
-                  }
-
+                  .lbl { font-size: 10px; color: #94a3b8; display: flex; align-items: center; gap: 3px; }
                   .val {
                     font-size: 12px;
                     font-weight: 700;
                     font-family: 'Helvetica Neue', Arial, sans-serif;
-
                     &.highlight-orange { color: #ea580c; }
                     &.highlight-cyan { color: #0284c7; }
                     &.highlight-blue { color: #2563eb; }
@@ -1785,41 +2141,20 @@ onMounted(() => {
         color: #64748b;
         transition: all 0.2s;
 
-        .tab-icon {
-          font-size: 18px;
-          transition: transform 0.2s;
-        }
-
-        .tab-label {
-          font-size: 11px;
-          font-weight: 500;
-        }
-
-        .tab-dot {
-          position: absolute;
-          bottom: -2px;
-          width: 4px;
-          height: 4px;
-          border-radius: 50%;
-          background: #00bebe;
-        }
+        .tab-icon { font-size: 18px; transition: transform 0.2s; }
+        .tab-label { font-size: 11px; font-weight: 500; }
+        .tab-dot { position: absolute; bottom: -2px; width: 4px; height: 4px; border-radius: 50%; background: #00bebe; }
 
         &.active {
           color: #00bebe;
-
-          .tab-icon {
-            transform: scale(1.1);
-          }
-          .tab-label {
-            font-weight: 700;
-          }
+          .tab-icon { transform: scale(1.1); }
+          .tab-label { font-weight: 700; }
         }
       }
     }
   }
 }
 
-// 展开过渡动效
 .drilldown-enter-active,
 .drilldown-leave-active {
   transition: all 0.24s ease-out;
