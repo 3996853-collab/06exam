@@ -1,170 +1,128 @@
 <template>
-  <div :class="{ 'sidebar-container': true, 'hideSidebar': !sidebar.opened }">
-    <div class="sidebar-header">
-      <el-popover
-        placement="bottom-start"
-        :width="190"
-        trigger="click"
-        popper-class="org-selector-popover"
-      >
-        <template #reference>
-          <div class="org-switcher">
-            <el-icon><CopyDocument /></el-icon>
-            <span>{{ selectedOrg }}</span>
-            <el-icon class="arrow"><ArrowDown /></el-icon>
-          </div>
-        </template>
-        
-        <div class="org-selector-content">
-          <div class="org-search">
-            <el-input v-model="orgSearchQuery" placeholder="搜索机构" prefix-icon="Search" size="small" clearable />
-          </div>
-          <div class="org-list-wrapper">
-            <div 
-              v-for="org in filteredOrgs" 
-              :key="org.name" 
-              class="org-item"
-              :class="{ 'is-selected': org.selected }"
-              @click="handleOrgSelect(org)"
-            >
-              <div class="org-item-left">
-                <el-icon v-if="org.selected" class="check-icon"><Check /></el-icon>
-                <el-icon class="org-icon">
-                  <component :is="org.type === 'hub' ? 'CopyDocument' : 'House'" />
-                </el-icon>
-                <span>{{ org.name }}</span>
+  <div :class="{ 'sidebar-container': true, 'is-collapse': !isOpened }">
+    <!-- 1. 展开模式 (宽度约 230px) -->
+    <template v-if="isOpened">
+      <!-- 顶部区域：机构选择器 -->
+      <div class="sidebar-top-org">
+        <el-popover
+          placement="bottom-start"
+          :width="210"
+          trigger="click"
+          popper-class="org-selector-popover"
+        >
+          <template #reference>
+            <div class="org-switcher" :title="favoriteStore.currentOrg">
+              <el-icon class="org-icon"><OfficeBuilding /></el-icon>
+              <span class="org-name">{{ favoriteStore.currentOrg }}</span>
+              <el-icon class="arrow"><ArrowDown /></el-icon>
+            </div>
+          </template>
+          
+          <div class="org-selector-content">
+            <div class="org-search">
+              <el-input
+                v-model="orgSearchQuery"
+                placeholder="搜索机构..."
+                prefix-icon="Search"
+                size="small"
+                clearable
+              />
+            </div>
+            <div class="org-list-wrapper">
+              <div 
+                v-for="org in filteredOrgs" 
+                :key="org.name" 
+                class="org-item"
+                :class="{ 'is-selected': org.name === favoriteStore.currentOrg }"
+                @click="handleOrgSelect(org.name)"
+              >
+                <div class="org-item-left">
+                  <el-icon v-if="org.name === favoriteStore.currentOrg" class="check-icon"><Check /></el-icon>
+                  <el-icon class="type-icon">
+                    <component :is="org.type === 'hub' ? 'OfficeBuilding' : 'House'" />
+                  </el-icon>
+                  <span>{{ org.name }}</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </el-popover>
-      <div class="search-container">
-        <el-input v-model="searchText" placeholder="输入菜单名称" prefix-icon="Search" size="small" />
+        </el-popover>
       </div>
-    </div>
-    <div class="sidebar-scroll-container">
-      <ul class="sidebar-menu">
-        <li
-          v-for="route in permission_routes"
-          v-show="!route.hidden"
-          :key="route.path"
-          :class="{ 'menu-item': true, 'active': isActive(route) }"
-          @mouseenter="handleMouseEnter(route)"
-          @mouseleave="handleMouseLeave"
-        >
-          <div class="menu-link" @click="handleMenuClick(route)">
-            <el-icon v-if="route.meta?.icon || (route.children && route.children[0]?.meta?.icon)" class="menu-icon">
-              <component :is="getIconComponent(route.meta?.icon || (route.children && route.children[0]?.meta?.icon))" />
-            </el-icon>
-            <span class="menu-text">{{ route.meta?.title || (route.children && route.children[0]?.meta?.title) || route.name || (route.children && route.children[0]?.name) }}</span>
-          </div>
-        </li>
-      </ul>
-    </div>
 
-    <!-- Mega Menu Panel -->
-    <div 
-      v-if="activeMegaMenu" 
-      class="mega-menu-panel"
-      @mouseenter="handlePanelEnter"
-      @mouseleave="handlePanelLeave"
-    >
-      <div class="mega-menu-header">
-        <el-input v-model="megaSearchText" placeholder="输入菜单名称" prefix-icon="Search" class="mega-search" />
-        <el-icon class="close-btn" @click="closeMegaMenu"><Close /></el-icon>
+      <!-- 区域 1：顶部搜索区 -->
+      <SidebarSearch />
+
+      <!-- 区域 2：分栏控制器（仅在非搜索态显示或常驻显示） -->
+      <SidebarSegmented v-show="!favoriteStore.searchKeyword" />
+
+      <!-- 区域 3：内容视图区（动态渲染） -->
+      <div class="sidebar-content-view">
+        <!-- 搜索激活态 -->
+        <SidebarSearchResults v-if="favoriteStore.searchKeyword" />
+
+        <!-- 默认状态：【我的收藏】视图 (扁平列表 + 拖拽) -->
+        <SidebarFavorites v-else-if="favoriteStore.activeTab === 'favorites'" />
+
+        <!-- 【全部菜单】视图 (树状折叠 + 星标) -->
+        <SidebarMenuTree v-else />
       </div>
-      <div class="mega-menu-content">
-        <div class="mega-column" v-for="(col, colIndex) in megaMenuData" :key="colIndex">
-          <div class="mega-group" v-for="group in col" :key="group.title">
-            <div class="group-title">
-              <el-icon class="group-icon"><CaretBottom /></el-icon>
-              {{ group.title }}
-            </div>
-            <ul class="group-list">
-              <li v-for="item in group.items" :key="item" @click="handleMegaItemClick(item)">{{ item }}</li>
-            </ul>
-          </div>
+    </template>
+
+    <!-- 2. 收缩模式 (Mini Icon 模式 64px 宽度) -->
+    <template v-else>
+      <SidebarMiniPopover />
+    </template>
+
+    <!-- 底部功能栏：预发环境开关 & 收起/展开折叠按钮 -->
+    <div class="sidebar-footer">
+      <div v-if="isOpened" class="footer-expanded">
+        <div class="env-switch">
+          <span>预发环境</span>
+          <el-switch v-model="isPreEnv" active-color="#00bebe" />
+        </div>
+        <div class="collapse-toggle-btn" title="收起导航栏" @click="toggleCollapse">
+          <el-icon><Fold /></el-icon>
         </div>
       </div>
-    </div>
-    <div class="sidebar-footer">
-      <div class="env-switch">
-        <span>预发环境</span>
-        <el-switch v-model="isPreEnv" active-color="#00b8c4" />
+      <div v-else class="footer-collapsed">
+        <div class="collapse-toggle-btn" title="展开导航栏" @click="toggleCollapse">
+          <el-icon><Expand /></el-icon>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
 import { useAppStore } from '@/store/modules/app'
-import { usePermissionStore } from '@/store/modules/permission'
+import { useFavoriteMenuStore } from '@/store/modules/favoriteMenu'
 
-import { constantRoutes } from '@/router/routes'
+import SidebarSearch from './sidebar/SidebarSearch.vue'
+import SidebarSegmented from './sidebar/SidebarSegmented.vue'
+import SidebarFavorites from './sidebar/SidebarFavorites.vue'
+import SidebarMenuTree from './sidebar/SidebarMenuTree.vue'
+import SidebarSearchResults from './sidebar/SidebarSearchResults.vue'
+import SidebarMiniPopover from './sidebar/SidebarMiniPopover.vue'
 
-const route = useRoute()
-const router = useRouter()
 const appStore = useAppStore()
-const permissionStore = usePermissionStore()
+const favoriteStore = useFavoriteMenuStore()
 
-const sidebar = computed(() => appStore.sidebar)
-const permission_routes = computed(() => {
-  return permissionStore.routes && permissionStore.routes.length > 0 
-    ? permissionStore.routes 
-    : constantRoutes
-})
-
-const searchText = ref('')
+const isOpened = computed(() => appStore.sidebar.opened)
 const isPreEnv = ref(false)
-const megaSearchText = ref('')
 
-const activeMegaMenu = ref(false)
-let hideTimeout = null
-
-const handleMouseEnter = (route) => {
-  if (hideTimeout) clearTimeout(hideTimeout)
-  // Show for all menu items for testing purposes
-  activeMegaMenu.value = true
-}
-
-const handleMouseLeave = () => {
-  hideTimeout = setTimeout(() => {
-    activeMegaMenu.value = false
-  }, 200) // Delay to allow moving mouse to the panel
-}
-
-const handlePanelEnter = () => {
-  if (hideTimeout) clearTimeout(hideTimeout)
-}
-
-const handlePanelLeave = () => {
-  activeMegaMenu.value = false
-}
-
-const closeMegaMenu = () => {
-  activeMegaMenu.value = false
-}
-
-// Org Selector Logic
-const selectedOrg = ref('总部')
+// 机构列表配置（组织强隔离）
 const orgSearchQuery = ref('')
 const orgList = [
-  { name: '总部', type: 'hub', selected: true },
+  { name: '总部', type: 'hub' },
   { name: '广西平南网点', type: 'branch' },
   { name: '广西柳州集配站', type: 'branch' },
+  { name: '长春分拨中心', type: 'hub' },
   { name: '广东深圳网点(待清算)', type: 'branch' },
   { name: '济南历城网点', type: 'branch' },
   { name: '济南分拨中心', type: 'hub' },
   { name: '内蒙古呼伦贝尔网点', type: 'branch' },
-  { name: '长春分拨中心', type: 'hub' },
   { name: '郑州中牟网点', type: 'branch' },
-  { name: '不要下单那曲CS二级网点', type: 'branch' },
-  { name: '不要下单那曲CS一级网点', type: 'branch' },
-  { name: '不要下单那曲CS分拨中心', type: 'hub' },
-  { name: '不要下单日喀则CS二级...', type: 'branch' },
-  { name: '不要下单日喀则CS一级...', type: 'branch' },
   { name: '西安未央网点', type: 'branch' }
 ]
 
@@ -173,441 +131,256 @@ const filteredOrgs = computed(() => {
   return orgList.filter(org => org.name.includes(orgSearchQuery.value))
 })
 
-const handleOrgSelect = (org) => {
-  selectedOrg.value = org.name
-  orgList.forEach(item => item.selected = (item.name === org.name))
+const handleOrgSelect = (orgName: string) => {
+  favoriteStore.switchOrg(orgName)
 }
 
-const isActive = (itemRoute) => {
-  // Check if current route path starts with this menu item's path
-  if (!route) return false
-  if (itemRoute.path === '/') {
-    return route.path === '/dashboard' || route.path === '/'
-  }
-  return route.path.startsWith(itemRoute.path)
+const toggleCollapse = () => {
+  appStore.toggleSidebar()
 }
 
-const handleMenuClick = (route) => {
-  if (route.children && route.children.length > 0) {
-    const firstChildPath = route.children[0].path
-    if (!firstChildPath) {
-      router.push(route.path)
-    } else if (firstChildPath.startsWith('/')) {
-      router.push(firstChildPath)
-    } else {
-      router.push(`${route.path.replace(/\/$/, '')}/${firstChildPath}`)
-    }
-  } else {
-    router.push(route.path)
-  }
-  closeMegaMenu()
-}
-
-const handleMegaItemClick = (itemName) => {
-    if (itemName === '录单') {
-      router.push('/order-entry')
-    } else if (itemName === '批量录单') {
-      router.push('/management-center/batch-order-entry')
-    } else if (itemName === '录单antigravity') {
-      router.push('/order-entry/antigravity')
-    } else if (itemName === '品控工作台') {
-      router.push('/service-quality/quality-control-workbench')
-    } else if (itemName === '品控数据看板') {
-      router.push('/service-quality/quality-control-dashboard')
-    } else if (itemName === '省份流向仪表盘') {
-      router.push('/data-analysis/province-flow-dashboard')
-    } else if (itemName === '智能对话') {
-      router.push('/smart-chat')
-    } else if (itemName === '移动看板' || itemName === '数据看板') {
-      router.push('/mobile-dashboard')
-    } else if (itemName === '看板配置管理') {
-      router.push('/dashboard-config')
-    } else if (itemName === 'SKILL权限管理') {
-      router.push('/system-management/skill-permission-management')
-    } else if (itemName === '问数对话') {
-      router.push('/chat')
-    } else if (itemName === '问数订阅') {
-      router.push('/data-analysis/smart-subscription')
-    } else if (itemName === '规则配置中心') {
-      router.push('/rule-config')
-    } else if (itemName === '规则构建器') {
-      router.push('/rule-config/builder')
-    } else if (itemName === '智能配置助手') {
-      router.push('/rule-config/ai')
-    } else if (itemName === '模板中心') {
-      router.push('/rule-config/template')
-    } else if (itemName === '物流策略预警平台') {
-      router.push('/logistics-warning/dashboard')
-    } else if (itemName === '配送运营看板') {
-      router.push('/cold-chain-dashboard')
-    } else if (itemName === '回单识别') {
-      router.push('/receipt-ocr')
-    } else {
-      // For other mock items, just show a message or do nothing
-      console.log('Clicked mega menu item:', itemName)
-    }
-    closeMegaMenu()
-  }
-
-// Hardcoded Mega Menu Data to match the screenshot
-const megaMenuData = [
-  [
-    {
-      title: '业务功能',
-      items: ['录单', '批量录单', '录单antigravity', '回单识别']
-    },
-    {
-      title: '服务质量',
-      items: ['品控工作台', '品控数据看板']
-    },
-    {
-      title: '数据分析',
-      items: ['省份流向仪表盘', '智能对话', '移动看板', '问数对话', '问数订阅']
-    },
-    {
-      title: '系统管理',
-      items: ['SKILL权限管理', '看板配置管理']
-    },
-    {
-      title: '预警配置',
-      items: ['规则配置中心', '规则构建器', '智能配置助手', '模板中心', '物流策略预警平台', '配送运营看板']
-    }
-  ]
-]
-
-const getIconComponent = (iconName) => {
-  return iconName
-}
-
-const logo = ref({
-  src: '/image.png',
-  alt: 'ZTO',
-  text: 'ZTO',
-  to: '/'
+onMounted(() => {
+  favoriteStore.init()
 })
 </script>
 
 <style lang="scss" scoped>
 .sidebar-container {
-  transition: width 0.28s;
-  width: 200px !important;
-  background-color: #002140; /* Updated to dark blue */
+  width: 230px !important;
+  background-color: #002140;
   height: 100%;
   position: relative;
   z-index: 2000;
   display: flex;
   flex-direction: column;
+  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.25);
+  user-select: none;
 
-  .sidebar-header {
-    padding: 15px;
-    background: #002140;
-    
+  &.is-collapse {
+    width: 64px !important;
+  }
+
+  // 顶部机构切换栏
+  .sidebar-top-org {
+    padding: 10px 12px 2px;
+
     .org-switcher {
       display: flex;
       align-items: center;
-      color: white;
-      font-size: 14px;
-      padding: 10px 0 15px;
+      height: 36px;
+      padding: 0 10px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
       cursor: pointer;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-      margin-bottom: 15px;
-
-      span {
-        margin: 0 8px;
-        flex: 1;
-      }
-    }
-
-    .search-container {
-      :deep(.el-input__wrapper) {
-        background-color: rgba(255, 255, 255, 0.1);
-        box-shadow: none;
-        
-        input {
-          color: white;
-          &::placeholder {
-            color: rgba(255, 255, 255, 0.5);
-          }
-        }
-        
-        .el-icon {
-          color: rgba(255, 255, 255, 0.5);
-        }
-      }
-    }
-  }
-
-  .sidebar-scroll-container {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: visible; /* Changed from hidden to visible */
-
-    .sidebar-menu {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-
-      .menu-item {
-        margin-bottom: 8px; /* Increased spacing */
-
-        &.active {
-          background: rgba(0, 184, 196, 0.1); /* Subtle cyber blue background */
-          color: #ffffff !important;
-
-          .menu-link {
-            color: #ffffff !important;
-            border-left: 4px solid #00b8c4;
-          }
-        }
-
-        .menu-link {
-          display: flex;
-          align-items: center;
-          height: 48px;
-          padding: 0 20px 0 24px;
-          color: rgba(255, 255, 255, 0.7) !important; /* Pale white default */
-          text-decoration: none;
-          transition: all 0.3s;
-          position: relative;
-          z-index: 2;
-          border-left: 4px solid transparent;
-
-          .active & {
-            color: #ffffff !important;
-          }
-
-          &:hover {
-            color: #ffffff !important;
-          }
-
-          .menu-icon {
-            margin-right: 10px;
-            font-size: 16px;
-            color: inherit !important;
-          }
-
-          .menu-text {
-            font-size: 14px;
-            color: inherit !important;
-          }
-        }
-      }
-    }
-  }
-
-  .sidebar-footer {
-    padding: 15px;
-    background: #002140;
-    border-top: 1px solid rgba(255,255,255,0.1);
-
-    .env-switch {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      color: white;
-      font-size: 14px;
-      background: rgba(255,255,255,0.1);
-      padding: 8px 12px;
-      border-radius: 4px;
-    }
-  }
-}
-
-@media (max-width: 992px) {
-  .sidebar-container {
-    width: 200px !important;
-
-    &.hideSidebar {
-      width: 0 !important;
-    }
-  }
-}
-
-.hideSidebar {
-  .sidebar-container {
-    width: 0 !important;
-    overflow: hidden;
-  }
-}
-
-// Mega Menu Styles
-.mega-menu-panel {
-  position: absolute; /* Changed from fixed to absolute to position relative to sidebar */
-  left: 200px; /* Width of the sidebar */
-  top: 0;
-  bottom: 0;
-  width: 900px;
-  background-color: #ffffff;
-  z-index: 3000;
-  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.08);
-  display: flex;
-  flex-direction: column;
-  animation: slideIn 0.2s ease-out;
-
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateX(-10px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-
-  .mega-menu-header {
-    display: flex;
-    align-items: center;
-    padding: 16px 24px;
-    border-bottom: 1px solid #f0f0f0;
-
-    .mega-search {
-      flex: 1;
-      max-width: 400px;
-      
-      :deep(.el-input__wrapper) {
-        border-radius: 4px;
-        box-shadow: 0 0 0 1px #dcdfe6 inset;
-        background-color: #f5f7fa;
-      }
-    }
-
-    .close-btn {
-      margin-left: auto;
-      font-size: 20px;
-      color: #999;
-      cursor: pointer;
-      padding: 4px;
+      color: #ffffff;
+      font-size: 13px;
+      transition: all 0.2s;
 
       &:hover {
-        color: #333;
-      }
-    }
-  }
-
-  .mega-menu-content {
-    flex: 1;
-    display: flex;
-    padding: 24px;
-    gap: 32px;
-    overflow-y: auto;
-
-    .mega-column {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-
-      .mega-group {
-        .group-title {
-          display: flex;
-          align-items: center;
-          font-size: 14px;
-          font-weight: 600;
-          color: #333;
-          margin-bottom: 12px;
-
-          .group-icon {
-            color: #00b8c4;
-            margin-right: 4px;
-            font-size: 12px;
-            transform: rotate(-45deg);
-          }
-        }
-
-        .group-list {
-          list-style: none;
-          padding: 0;
-          margin: 0 0 0 16px;
-
-          li {
-            font-size: 13px;
-            color: #666;
-            margin-bottom: 10px;
-            cursor: pointer;
-            transition: color 0.2s;
-
-            &:hover {
-              color: #00b8c4;
-            }
-
-            &:last-child {
-              margin-bottom: 0;
-            }
-          }
-        }
-      }
-    }
-  }
-}
-// Org Selector Styles
-:global(.org-selector-popover) {
-  padding: 0 !important;
-  border-radius: 4px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-}
-
-.org-selector-content {
-  .org-search {
-    padding: 12px;
-    border-bottom: 1px solid #f0f0f0;
-  }
-
-  .org-list-wrapper {
-    max-height: 400px;
-    overflow-y: auto;
-    padding: 4px 0;
-
-    &::-webkit-scrollbar {
-      width: 6px;
-    }
-    &::-webkit-scrollbar-thumb {
-      background: #e0e0e0;
-      border-radius: 3px;
-    }
-  }
-
-  .org-item {
-    display: flex;
-    align-items: center;
-    padding: 8px 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-
-    &:hover {
-      background-color: #f5f7fa;
-    }
-
-    &.is-selected {
-      background-color: #f0f9fa;
-      
-      span {
-        color: #00b8c4;
-        font-weight: 500;
-      }
-    }
-
-    .org-item-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
-
-      .check-icon {
-        color: #00b8c4;
-        font-size: 12px;
-        position: absolute;
-        left: 4px;
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(0, 190, 190, 0.4);
       }
 
       .org-icon {
-        font-size: 14px;
-        color: #606266;
-        margin-left: 10px;
+        font-size: 15px;
+        color: rgb(0, 190, 190);
+        margin-right: 6px;
+        flex-shrink: 0;
       }
 
-      span {
-        font-size: 12px;
-        color: #303133;
+      .org-name {
+        flex: 1;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        font-weight: 500;
+      }
+
+      .arrow {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.5);
+        margin-left: 4px;
+        flex-shrink: 0;
+      }
+    }
+  }
+
+  // 内容滚动区域
+  .sidebar-content-view {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  }
+
+  // 底部控制栏
+  .sidebar-footer {
+    padding: 10px 12px;
+    background: #001b34;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+
+    .footer-expanded {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+
+      .env-switch {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 12px;
+        background: rgba(255, 255, 255, 0.06);
+        padding: 6px 10px;
+        border-radius: 6px;
+      }
+
+      .collapse-toggle-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.7);
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+          color: #ffffff;
+          background: rgba(0, 190, 190, 0.25);
+        }
+
+        .el-icon {
+          font-size: 16px;
+        }
+      }
+    }
+
+    .footer-collapsed {
+      display: flex;
+      justify-content: center;
+
+      .collapse-toggle-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.8);
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+          color: #ffffff;
+          background: rgba(0, 190, 190, 0.3);
+        }
+
+        .el-icon {
+          font-size: 18px;
+        }
+      }
+    }
+  }
+}
+</style>
+
+<style lang="scss">
+.org-selector-popover {
+  background: #002140 !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
+  padding: 8px !important;
+
+  .org-selector-content {
+    .org-search {
+      margin-bottom: 8px;
+
+      .el-input__wrapper {
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: none;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+
+        input {
+          color: #fff;
+          font-size: 12px;
+          &::placeholder {
+            color: rgba(255, 255, 255, 0.45);
+          }
+        }
+      }
+    }
+
+    .org-list-wrapper {
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+
+      .org-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 12px;
+        transition: all 0.2s;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.1);
+          color: #fff;
+        }
+
+        &.is-selected {
+          background: rgba(0, 190, 190, 0.2);
+          color: rgb(0, 190, 190);
+          font-weight: 500;
+        }
+
+        .org-item-left {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          overflow: hidden;
+
+          .type-icon {
+            font-size: 13px;
+          }
+
+          .check-icon {
+            color: rgb(0, 190, 190);
+            font-size: 13px;
+          }
+
+          span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+        }
       }
     }
   }
